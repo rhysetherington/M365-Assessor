@@ -6,9 +6,14 @@ function Get-GraphErrorSummary {
     try { $code = [int]$ErrorRecord.Exception.Response.StatusCode } catch { }
     $message = $ErrorRecord.Exception.Message
     if ($ErrorRecord.ErrorDetails.Message) {
+        # The SDK prefixes the JSON body with the raw HTTP status line and headers; parse from the first brace.
         try {
-            $parsed = ($ErrorRecord.ErrorDetails.Message | ConvertFrom-Json).error.message
-            if ($parsed) { $message = $parsed }
+            $raw = [string]$ErrorRecord.ErrorDetails.Message
+            $start = $raw.IndexOf('{')
+            if ($start -ge 0) {
+                $parsed = ($raw.Substring($start) | ConvertFrom-Json).error.message
+                if ($parsed) { $message = $parsed }
+            }
         }
         catch { }
     }

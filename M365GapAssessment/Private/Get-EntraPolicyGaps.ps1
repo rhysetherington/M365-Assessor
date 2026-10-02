@@ -66,8 +66,14 @@ function Get-EntraPolicyGaps {
     # --- Authentication methods ---------------------------------------------------------------------
     Write-Progress -Id 2 -ParentId 1 -Activity 'Entra policy' -Status 'Authentication methods' -PercentComplete 28
     Invoke-Collector -Name 'Authentication methods' -FindingIds 'ENT-AUTH-001', 'ENT-AUTH-002', 'ENT-AUTH-003' -Script {
+        # The configurations are not addressable as a collection; the policy returns them inline (id + state),
+        # and individual methods can be fetched by id for feature settings.
+        $policy = Invoke-GraphRequestWithRetry -Uri '/v1.0/policies/authenticationMethodsPolicy'
         $byId = @{}
-        foreach ($c in @(Get-GraphPagedResult -Uri '/v1.0/policies/authenticationMethodsPolicy/authenticationMethodConfigurations')) { $byId[[string]$c.id] = $c }
+        foreach ($c in @($policy.authenticationMethodConfigurations)) { $byId[[string]$c.id] = $c }
+        if ($byId['MicrosoftAuthenticator'].state -eq 'enabled') {
+            $byId['MicrosoftAuthenticator'] = Invoke-GraphRequestWithRetry -Uri '/v1.0/policies/authenticationMethodsPolicy/authenticationMethodConfigurations/MicrosoftAuthenticator'
+        }
 
         $weak = @('Sms', 'Voice') | Where-Object { $byId[$_].state -eq 'enabled' }
         New-Finding -Id 'ENT-AUTH-001' -Status $(if (@($weak).Count) { 'Gap' } else { 'Pass' }) -AffectedObjects @($weak | ForEach-Object { "$_ authentication is enabled" })
@@ -84,7 +90,8 @@ function Get-EntraPolicyGaps {
     }
 
     Invoke-Collector -Name 'Password protection' -FindingIds 'ENT-AUTH-004' -Script {
-        $setting = @(Get-GraphPagedResult -Uri '/v1.0/settings') | Where-Object { $_.displayName -eq 'Password Rule Settings' } | Select-Object -First 1
+        # Tenant settings are listed under /groupSettings; 'Password Rule Settings' only exists once customised.
+        $setting = @(Get-GraphPagedResult -Uri '/v1.0/groupSettings') | Where-Object { $_.displayName -eq 'Password Rule Settings' } | Select-Object -First 1
         $values = @{}
         foreach ($v in @($setting.values)) { $values[[string]$v.name] = [string]$v.value }
         $enabled = $values['EnableBannedPasswordCheck'] -eq 'True' -and -not [string]::IsNullOrWhiteSpace($values['BannedPasswordList'])
