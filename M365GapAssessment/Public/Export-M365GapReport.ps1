@@ -9,10 +9,10 @@ function Get-ScoreText {
 }
 
 function Get-ComplianceMatrix {
-    # One row per NIST CSF 2.0 subcategory: worst status wins (Gap > NotAssessed > Pass).
+    # One row per NIST CSF 2.0 subcategory: worst status wins (Gap > NotAssessed > Accepted > Pass).
     param($Findings)
     $Findings | Group-Object NistCsf | Sort-Object Name | ForEach-Object {
-        $status = if ($_.Group.Status -contains 'Gap') { 'Gap' } elseif ($_.Group.Status -contains 'NotAssessed') { 'Not assessed' } else { 'Pass' }
+        $status = if ($_.Group.Status -contains 'Gap') { 'Gap' } elseif ($_.Group.Status -contains 'NotAssessed') { 'Not assessed' } elseif ($_.Group.Status -contains 'Accepted') { 'Accepted' } else { 'Pass' }
         [pscustomobject]@{
             Nist    = $_.Name
             Scf     = (($_.Group.ScfControl | Sort-Object -Unique) -join ', ')
@@ -44,6 +44,7 @@ function New-AssessmentMarkdown {
     $md.Add("| Passed | $($Assessment.Summary.Passed) |")
     $md.Add("| Gaps | $($Assessment.Summary.Gaps) |")
     $md.Add("| Not assessed (permission/licence) | $($Assessment.Summary.NotAssessed) |")
+    if ($Assessment.Summary.Accepted) { $md.Add("| Accepted risks | $($Assessment.Summary.Accepted) |") }
     $md.Add('')
     $md.Add("| Critical | High | Medium | Low |`n|:-:|:-:|:-:|:-:|`n| $($sev.Critical) | $($sev.High) | $($sev.Medium) | $($sev.Low) |")
     $md.Add('')
@@ -94,6 +95,16 @@ function New-AssessmentMarkdown {
         $md.Add('')
         foreach ($n in $na) { $md.Add("- **$($n.FindingId)** $($n.Name): $(ConvertTo-MdCell $n.Detail)") }
     }
+    $accepted = @($f | Where-Object Status -eq 'Accepted')
+    if ($accepted.Count) {
+        $md.Add('')
+        $md.Add('## Accepted Risks')
+        $md.Add('')
+        foreach ($a in $accepted) {
+            $exp = if ($a.AcceptedRisk.Expires) { ", expires $($a.AcceptedRisk.Expires)" } else { '' }
+            $md.Add("- **$($a.FindingId)** $($a.Name): $(ConvertTo-MdCell $a.AcceptedRisk.Reason) (approved by $(if ($a.AcceptedRisk.ApprovedBy) { $a.AcceptedRisk.ApprovedBy } else { 'n/a' })$exp)")
+        }
+    }
     $passed = @($f | Where-Object Status -eq 'Pass')
     if ($passed.Count) {
         $md.Add('')
@@ -137,13 +148,14 @@ code{background:#eef1f5;padding:1px 5px;border-radius:4px}@media print{body{back
 <div class="tile">Compliance score<b>$(& $enc (Get-ScoreText $Assessment))</b></div>
 <div class="tile">Checks<b>$($Assessment.Summary.TotalChecks)</b></div>
 <div class="tile">Gaps<b>$($Assessment.Summary.Gaps)</b></div>
-<div class="tile">Not assessed<b>$($Assessment.Summary.NotAssessed)</b></div></div>
+<div class="tile">Not assessed<b>$($Assessment.Summary.NotAssessed)</b></div>
+<div class="tile">Accepted<b>$([int]$Assessment.Summary.Accepted)</b></div></div>
 <table><tr><th>Critical</th><th>High</th><th>Medium</th><th>Low</th></tr><tr><td>$($sev.Critical)</td><td>$($sev.High)</td><td>$($sev.Medium)</td><td>$($sev.Low)</td></tr></table>
 <h2>Control Compliance Matrix (NIST CSF 2.0 / SCF)</h2>
 <table><tr><th>NIST CSF 2.0</th><th>SCF</th><th>Status</th><th>Findings</th></tr>
 "@)
     foreach ($row in (Get-ComplianceMatrix -Findings $f)) {
-        $cls = switch ($row.Status) { 'Gap' { 's-Gap' } 'Pass' { 's-Pass' } default { 's-Not' } }
+        $cls = switch ($row.Status) { 'Gap' { 's-Gap' } 'Pass' { 's-Pass' } 'Accepted' { 's-Pass' } default { 's-Not' } }
         [void]$sb.Append("<tr><td>$(& $enc $row.Nist)</td><td>$(& $enc $row.Scf)</td><td class=`"$cls`">$(& $enc $row.Status)</td><td>$(& $enc $row.Finding)</td></tr>")
     }
     [void]$sb.Append('</table>')
