@@ -148,6 +148,97 @@
       ]
     },
     {
+      "id": "TMS-001", "domain": "Microsoft Teams", "name": "Teams external federation open to all domains", "severity": "Medium",
+      "scf": "NET-03", "nistCsf": "PR.IR-01", "cis": ["8.2.1"],
+      "remediation": [
+        "Teams admin center > Users > External access.",
+        "Set 'Choose which domains your users have access to' to 'Allow only specific external domains' (or block all external domains) and add approved partner domains.",
+        "Review which teams genuinely collaborate externally before restricting."
+      ]
+    },
+    {
+      "id": "TMS-002", "domain": "Microsoft Teams", "name": "Teams users can communicate with unmanaged (personal) Teams accounts", "severity": "Medium",
+      "scf": "NET-03", "nistCsf": "PR.IR-01", "cis": ["8.2.2", "8.2.3"],
+      "remediation": [
+        "Teams admin center > Users > External access.",
+        "Turn off 'People in my organization can communicate with Teams users whose accounts aren't managed by an organization'.",
+        "Turn off 'External users with Teams accounts not managed by an organization can contact users in my organization'."
+      ]
+    },
+    {
+      "id": "TMS-003", "domain": "Microsoft Teams", "name": "Teams allows communication with trial tenants", "severity": "Low",
+      "scf": "NET-03", "nistCsf": "PR.IR-01", "cis": ["8.2.4"],
+      "remediation": [
+        "Teams PowerShell: Set-CsTenantFederationConfiguration -ExternalAccessWithTrialTenants 'Blocked'.",
+        "Or Teams admin center > Users > External access > uncheck access to trial-only Microsoft 365 organisations."
+      ]
+    },
+    {
+      "id": "TMS-004", "domain": "Microsoft Teams", "name": "Anonymous users can join or start Teams meetings", "severity": "Medium",
+      "scf": "NET-03", "nistCsf": "PR.AA-05", "cis": ["8.5.1", "8.5.2"],
+      "remediation": [
+        "Teams admin center > Meetings > Meeting policies > Global (Org-wide default) > Meeting join & lobby.",
+        "Set 'Anonymous users can join a meeting' to Off and 'Anonymous users and dial-in callers can start a meeting' to Off."
+      ]
+    },
+    {
+      "id": "TMS-005", "domain": "Microsoft Teams", "name": "Teams lobby can be bypassed by external or dial-in users", "severity": "Medium",
+      "scf": "NET-03", "nistCsf": "PR.AA-05", "cis": ["8.5.3", "8.5.4"],
+      "remediation": [
+        "Teams admin center > Meetings > Meeting policies > Global > Meeting join & lobby.",
+        "Set 'Who can bypass the lobby' to 'People in my org' (or invited users / organisers only).",
+        "Set 'People dialing in can bypass the lobby' to Off."
+      ]
+    },
+    {
+      "id": "TMS-006", "domain": "Microsoft Teams", "name": "Anonymous users can use Teams meeting chat", "severity": "Low",
+      "scf": "NET-03", "nistCsf": "PR.DS-02", "cis": ["8.5.5"],
+      "remediation": [
+        "Teams admin center > Meetings > Meeting policies > Global > Meeting engagement.",
+        "Set 'Meeting chat' to 'On for everyone but anonymous users' (or more restrictive)."
+      ]
+    },
+    {
+      "id": "TMS-007", "domain": "Microsoft Teams", "name": "Anyone can present or external participants can take control in Teams meetings", "severity": "Low",
+      "scf": "NET-03", "nistCsf": "PR.AA-05", "cis": ["8.5.6", "8.5.7"],
+      "remediation": [
+        "Teams admin center > Meetings > Meeting policies > Global > Content sharing.",
+        "Set 'Who can present' to 'Only organizers and co-organizers' and 'External participants can give or request control' to Off."
+      ]
+    },
+    {
+      "id": "TMS-008", "domain": "Microsoft Teams", "name": "Third-party cloud storage enabled in Teams", "severity": "Medium",
+      "scf": "DCH-13", "nistCsf": "PR.DS-01", "cis": ["8.1.1"],
+      "remediation": [
+        "Teams admin center > Teams > Teams settings > Files.",
+        "Turn off every third-party storage provider (Dropbox, Box, Google Drive, ShareFile, Egnyte) that is not an approved service."
+      ]
+    },
+    {
+      "id": "TMS-009", "domain": "Microsoft Teams", "name": "Email into Teams channels allowed", "severity": "Low",
+      "scf": "DCH-13", "nistCsf": "PR.DS-02", "cis": ["8.1.2"],
+      "remediation": [
+        "Teams admin center > Teams > Teams settings > Email integration.",
+        "Turn off 'Users can send emails to a channel email address'."
+      ]
+    },
+    {
+      "id": "TMS-010", "domain": "Microsoft Teams", "name": "Users cannot report security concerns in Teams", "severity": "Low",
+      "scf": "IRO-10", "nistCsf": "DE.AE-02", "cis": ["8.6.1"],
+      "remediation": [
+        "Teams admin center > Messaging > Messaging policies > Global > Report a security concern = On.",
+        "Also enable user reported settings in the Defender portal so reports reach the security team."
+      ]
+    },
+    {
+      "id": "TMS-011", "domain": "Microsoft Teams", "name": "Teams meeting recording enabled by default", "severity": "Low",
+      "scf": "NET-03", "nistCsf": "PR.DS-02", "cis": ["8.5.9"],
+      "remediation": [
+        "Teams admin center > Meetings > Meeting policies > Global > Recording & transcription.",
+        "Turn off 'Meeting recording' in the Global policy and enable it only in a policy assigned to organisers who need it."
+      ]
+    },
+    {
       "id": "ENT-USR-005", "domain": "Entra ID", "name": "Excessive number of Global Administrators", "severity": "Medium",
       "scf": "IAC-21", "nistCsf": "PR.AA-05", "cis": ["1.1.3"],
       "remediation": [
