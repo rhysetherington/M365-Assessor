@@ -16,7 +16,7 @@ function Invoke-M365SecurityReview {
         [string]$ClientId,
         [string]$CertificateThumbprint,
         [switch]$UseDeviceAuthentication,
-        [ValidateSet('Licensing', 'EntraID', 'EntraPolicy', 'Defender', 'SecureScore', 'EmailDns')]
+        [ValidateSet('Licensing', 'EntraID', 'EntraPolicy', 'Defender', 'SecureScore', 'EmailDns', 'ExchangeOnline')]
         [string[]]$Domain = @('Licensing', 'EntraID', 'EntraPolicy', 'Defender', 'SecureScore', 'EmailDns'),
         [string]$DohEndpoint = 'https://cloudflare-dns.com/dns-query',
         [int]$StaleDays = 90,
@@ -66,6 +66,7 @@ function Invoke-M365SecurityReview {
                 'Defender' { Get-DefenderGaps }
                 'SecureScore' { Get-SecureScoreGaps -TargetScorePercent $TargetScorePercent }
                 'EmailDns' { Get-EmailDnsGaps -DohEndpoint $DohEndpoint }
+                'ExchangeOnline' { Get-ExchangeOnlineGaps -TenantId $tenant }
             }
             foreach ($f in @($result)) { if ($f) { $findings.Add($f) } }
             $done++

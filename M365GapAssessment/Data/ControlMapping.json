@@ -91,6 +91,63 @@
       ]
     },
     {
+      "id": "EXO-001", "domain": "Exchange Online", "name": "Mail auto-forwarding not blocked", "severity": "High",
+      "scf": "NET-12", "nistCsf": "PR.DS-02", "cis": ["6.2.1"],
+      "remediation": [
+        "Microsoft Defender portal > Email & collaboration > Policies > Anti-spam > Anti-spam outbound policy (Default).",
+        "Set 'Automatic forwarding' to Off - Forwarding is disabled.",
+        "For each mailbox listed with forwarding, remove the forwarding address (Exchange admin center > Recipients > Mailboxes > Manage mail flow settings)."
+      ]
+    },
+    {
+      "id": "EXO-002", "domain": "Exchange Online", "name": "Mailbox auditing disabled organization-wide", "severity": "High",
+      "scf": "MON-03", "nistCsf": "DE.CM-03", "cis": ["6.1.1"],
+      "remediation": [
+        "Exchange Online PowerShell: Set-OrganizationConfig -AuditDisabled $false.",
+        "Confirm with Get-OrganizationConfig | Format-List AuditDisabled."
+      ]
+    },
+    {
+      "id": "EXO-003", "domain": "Exchange Online", "name": "Modern authentication disabled for Exchange Online", "severity": "High",
+      "scf": "IAC-02", "nistCsf": "PR.AA-03", "cis": ["6.5.1"],
+      "remediation": [
+        "Exchange Online PowerShell: Set-OrganizationConfig -OAuth2ClientProfileEnabled $true.",
+        "Update any legacy Outlook clients before enforcing."
+      ]
+    },
+    {
+      "id": "EXO-004", "domain": "Exchange Online", "name": "SMTP AUTH enabled tenant-wide", "severity": "Medium",
+      "scf": "CFG-03", "nistCsf": "PR.PS-01", "cis": ["6.5.4"],
+      "remediation": [
+        "Exchange admin center > Settings > Mail flow > tick 'Turn off SMTP AUTH protocol for your organization' (or: Set-TransportConfig -SmtpClientAuthenticationDisabled $true).",
+        "Enable SMTP AUTH per mailbox only for devices that cannot use OAuth (Set-CASMailbox -SmtpClientAuthenticationDisabled $false)."
+      ]
+    },
+    {
+      "id": "EXO-005", "domain": "Exchange Online", "name": "Shared mailboxes allow direct sign-in", "severity": "Medium",
+      "scf": "IAC-15", "nistCsf": "PR.AA-01", "cis": ["1.2.2"],
+      "remediation": [
+        "Microsoft 365 admin center > Users > Active users > select the shared mailbox account > Block sign-in.",
+        "Or: Set-MgUser -UserId <id> -AccountEnabled:$false."
+      ]
+    },
+    {
+      "id": "EXO-006", "domain": "Exchange Online", "name": "No custom anti-phishing policy", "severity": "Medium",
+      "scf": "NET-12", "nistCsf": "DE.CM-09", "cis": ["2.1.7"],
+      "remediation": [
+        "Microsoft Defender portal > Email & collaboration > Policies > Threat policies > Anti-phishing > Create policy.",
+        "Enable impersonation protection for key users and domains, mailbox intelligence, and a phishing threshold of 2 or higher; apply to all recipient domains."
+      ]
+    },
+    {
+      "id": "EXO-007", "domain": "Exchange Online", "name": "Safe Links not enabled for email, Office and Teams", "severity": "Medium",
+      "scf": "NET-12", "nistCsf": "DE.CM-09", "cis": ["2.1.1"],
+      "remediation": [
+        "Microsoft Defender portal > Email & collaboration > Policies > Threat policies > Safe Links.",
+        "Create or edit a policy enabling Safe Links for email, Office applications and Teams; turn on real-time URL scanning and do-not-track disabled."
+      ]
+    },
+    {
       "id": "ENT-USR-005", "domain": "Entra ID", "name": "Excessive number of Global Administrators", "severity": "Medium",
       "scf": "IAC-21", "nistCsf": "PR.AA-05", "cis": ["1.1.3"],
       "remediation": [

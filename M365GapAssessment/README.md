@@ -81,6 +81,7 @@ personal Microsoft accounts are rejected. For app-only use, grant the equivalent
 | `-Domain` | Checks |
 |---|---|
 | `Licensing` | Reads `subscribedSkus`; flags a tenant with no Entra ID P1/P2. Also explains NotAssessed results caused by a missing licence. |
+| `ExchangeOnline` | **Opt-in** (`-Domain ...,ExchangeOnline`). Forwarding, mailbox audit, modern auth, SMTP AUTH, shared mailbox sign-in, anti-phish, Safe Links. Needs `Install-Module ExchangeOnlineManagement` and a second interactive sign-in (Get-* cmdlets only); reported NotAssessed if the module is absent. |
 | `EntraID` | Conditional Access baseline, PIM permanence, MFA registration, stale accounts, app credentials and application permissions, guests in privileged groups |
 | `EntraPolicy` | User/admin consent, app and tenant creation, guest settings, delegated tenant-wide grants, authentication methods, password protection, CA depth (device, guest MFA, risk, locations), Global Admin PIM settings, cross-tenant access, stale guests, directory sync, risky users, access reviews, Terms of use |
 | `Defender` | High alerts, active incidents, device compliance and encryption |
