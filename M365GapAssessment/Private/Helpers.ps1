@@ -101,7 +101,7 @@ function New-Finding {
     [CmdletBinding()]
     param(
         [Parameter(Mandatory)][string]$Id,
-        [ValidateSet('Gap', 'Pass', 'NotAssessed')][string]$Status = 'Gap',
+        [ValidateSet('Gap', 'Pass', 'NotAssessed', 'Accepted')][string]$Status = 'Gap',
         [object[]]$AffectedObjects = @(),
         [string]$Detail = '',
         [ValidateSet('Critical', 'High', 'Medium', 'Low', 'Informational')][string]$Severity
@@ -181,7 +181,7 @@ function Measure-AssessmentScore {
     if (-not $scored.Count) { return $null }
 
     $total  = ($scored | ForEach-Object { $weights[[string]$_.Severity] } | Measure-Object -Sum).Sum
-    $passed = ($scored | Where-Object { $_.Status -eq 'Pass' } | ForEach-Object { $weights[[string]$_.Severity] } | Measure-Object -Sum).Sum
+    $passed = ($scored | Where-Object { $_.Status -in 'Pass', 'Accepted' } | ForEach-Object { $weights[[string]$_.Severity] } | Measure-Object -Sum).Sum
 
     [math]::Round(100 * ($passed / $total), 1)
 }

@@ -22,6 +22,7 @@ function Invoke-M365SecurityReview {
         [int]$StaleDays = 90,
         [int]$SecretWarningDays = 30,
         [int]$TargetScorePercent = 70,
+        [string]$AcceptedRiskPath,
         [switch]$SkipRoleCheck,
         [switch]$NoExport
     )
@@ -70,6 +71,7 @@ function Invoke-M365SecurityReview {
             $done++
         }
 
+        Set-AcceptedRisk -Findings $findings -Risks @(Import-AcceptedRisk -Path $AcceptedRiskPath)
         $ordered = @($findings | Sort-Object @{ Expression = { $script:SeverityOrder[[string]$_.Severity] } }, FindingId)
         $gapList = @($ordered | Where-Object Status -eq 'Gap')
 
@@ -90,6 +92,7 @@ function Invoke-M365SecurityReview {
                 Gaps         = $gapList.Count
                 Passed       = @($ordered | Where-Object Status -eq 'Pass').Count
                 NotAssessed  = @($ordered | Where-Object Status -eq 'NotAssessed').Count
+                Accepted     = @($ordered | Where-Object Status -eq 'Accepted').Count
                 GapsBySeverity = [pscustomobject][ordered]@{
                     Critical = @($gapList | Where-Object Severity -eq 'Critical').Count
                     High     = @($gapList | Where-Object Severity -eq 'High').Count
