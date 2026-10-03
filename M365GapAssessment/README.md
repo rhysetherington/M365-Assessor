@@ -115,3 +115,24 @@ as Entra ID P2 for PIM, Intune or Defender, or missing consent) and is reported 
 - Break-glass detection in Conditional Access is a heuristic (all-user policies with no exclusions).
 - Stale-account detection needs Entra ID P1 (`signInActivity`); MFA registration report needs `Reports.Read.All`.
 - Alerts/incidents are capped by `Get-DefenderGaps -MaxItems` (default 2000) to bound runtime on very large tenants.
+
+## Accepted risks and run-to-run diff
+
+```powershell
+# Known gaps covered by an accepted-risk file are reported as Status 'Accepted' (counted as passed in the score)
+Invoke-M365SecurityReview -TenantId <guid> -AcceptedRiskPath ./client1-accepted.json
+```
+
+```json
+{ "risks": [ { "findingId": "ENT-USR-001", "affected": ["breakglass1@contoso.com"], "reason": "Break-glass account",
+               "approvedBy": "J. Smith", "expires": "2027-01-31" } ] }
+```
+
+`affected` (prefix match, case-insensitive) and `expires` are optional. With no `affected` list the whole finding is accepted;
+with a list, every affected object must be covered, so a new object re-opens the gap. Expired entries stop applying.
+
+```powershell
+Compare-M365Assessment -Baseline .\Assessments\<old>\AssessmentFindings.json -Current .\Assessments\<new>\AssessmentFindings.json
+```
+
+Classifies each finding as New, Resolved, Changed (severity or affected objects differ) or Unchanged; only `Gap` counts as open.
