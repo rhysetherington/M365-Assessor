@@ -127,76 +127,183 @@ function New-AssessmentHtml {
     $f = @($Assessment.Findings)
     $gaps = @($f | Where-Object Status -eq 'Gap')
     $sev = $Assessment.Summary.GapsBySeverity
+    $sum = $Assessment.Summary
     $sb = [System.Text.StringBuilder]::new()
+    $add = { param($t) [void]$sb.Append($t) }
 
-    [void]$sb.Append(@"
+    $score = $Assessment.Score
+    $scoreText = if ($null -eq $score) { 'n/a' } else { "$([math]::Round($score))%" }
+    $scoreDeg = if ($null -eq $score) { 0 } else { [math]::Round(3.6 * [double]$score) }
+    $scoreVar = if ($null -eq $score) { 'var(--mute)' } elseif ($score -ge 80) { 'var(--pass)' } elseif ($score -ge 60) { 'var(--medium)' } else { 'var(--critical)' }
+    $scoreWord = if ($null -eq $score) { 'Not calculated' } elseif ($score -ge 80) { 'Strong' } elseif ($score -ge 60) { 'Fair' } else { 'Needs attention' }
+    $assessed = $sum.TotalChecks - $sum.NotAssessed
+
+    $css = @'
+:root{--bg:#f4f6f9;--card:#fff;--ink:#17202c;--mute:#5a6879;--line:#e1e6ed;--soft:#eef2f7;--accent:#1d4ed8;--critical:#b42318;--high:#d9480f;--medium:#b7791f;--low:#2f6fba;--pass:#1b7f4b;--hero1:#0f2742;--hero2:#1d4ed8}
+@media (prefers-color-scheme:dark){:root{--bg:#0e141b;--card:#161e28;--ink:#e6ebf2;--mute:#9aa8b9;--line:#263241;--soft:#1d2733;--accent:#6ea0ff;--critical:#f97066;--high:#ff8a4c;--medium:#e3b341;--low:#6ea8ff;--pass:#4cc38a;--hero1:#0b1a2e;--hero2:#1e3a8a}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
+.hero{background:linear-gradient(135deg,var(--hero1),var(--hero2));color:#fff;padding:44px 20px 84px}
+.wrap{max-width:1040px;margin:0 auto;padding:0 20px}.hero .wrap{padding:0}
+.eyebrow{letter-spacing:.14em;text-transform:uppercase;font-size:12px;opacity:.75;font-weight:600}
+h1{margin:6px 0 8px;font-size:34px;line-height:1.15;letter-spacing:-.01em}.hero p{margin:0;opacity:.85}
+main.wrap{margin:-56px auto 0;padding-bottom:40px}
+section{margin-top:28px}h2{font-size:20px;margin:0 0 4px;letter-spacing:-.005em}h3{font-size:16px;margin:22px 0 8px}
+.lede{color:var(--mute);margin:0 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:22px;box-shadow:0 1px 2px rgba(15,23,42,.04)}
+.glance{display:grid;grid-template-columns:200px 1fr;gap:28px;align-items:center}
+.ring{width:176px;height:176px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--deg)*1deg),var(--soft) 0);display:grid;place-items:center;margin:auto}
+.ring div{width:144px;height:144px;border-radius:50%;background:var(--card);display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;line-height:1.15}
+.ring b{font-size:38px;display:block}.ring span{font-size:11px;color:var(--mute);font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:12px}
+.stat{background:var(--soft);border-radius:10px;padding:12px 14px}.stat b{font-size:24px;display:block;line-height:1.2}.stat span{color:var(--mute);font-size:13px}
+.sevbar{display:flex;height:12px;border-radius:99px;overflow:hidden;background:var(--soft);margin:16px 0 8px}
+.sevbar i{display:block}.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:13px;color:var(--mute)}
+.dot{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:baseline}
+.Critical{--s:var(--critical)}.High{--s:var(--high)}.Medium{--s:var(--medium)}.Low{--s:var(--low)}
+.bg-Critical{background:var(--critical)}.bg-High{background:var(--high)}.bg-Medium{background:var(--medium)}.bg-Low{background:var(--low)}
+.priorities{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.prio{background:var(--card);border:1px solid var(--line);border-top:4px solid var(--s,var(--mute));border-radius:12px;padding:16px 18px}
+.prio h4{margin:6px 0 6px;font-size:15px;line-height:1.35}.prio p{margin:0 0 8px;color:var(--mute);font-size:14px}
+.prio .step{font-size:13px;background:var(--soft);border-radius:8px;padding:8px 10px}.prio .step b{color:var(--ink)}
+.badge{display:inline-block;padding:1px 10px;border-radius:99px;color:#fff;font-size:11.5px;font-weight:700;letter-spacing:.03em;text-transform:uppercase}
+.rows{display:grid;gap:12px}.row{display:grid;grid-template-columns:200px 1fr 120px;gap:14px;align-items:center;font-size:14px}
+.track{display:flex;height:12px;border-radius:99px;overflow:hidden;background:var(--soft)}.track i{display:block}
+.pass{background:var(--pass)}.gapc{background:var(--critical)}.na{background:var(--mute);opacity:.55}.pts{background:var(--accent)}
+.row small{color:var(--mute);text-align:right}
+.chips{display:flex;flex-wrap:wrap;gap:8px}.chip{background:var(--soft);border-radius:99px;padding:4px 12px;font-size:13px}
+.chip.ok::before{content:"\2713";color:var(--pass);font-weight:700;margin-right:6px}
+details{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:10px 0}
+details>summary{cursor:pointer;padding:12px 16px;list-style:none;display:flex;gap:10px;align-items:center;font-weight:600}
+details>summary::-webkit-details-marker{display:none}details>summary::after{content:"\25BE";margin-left:auto;color:var(--mute)}details[open]>summary::after{content:"\25B4"}
+details .body{padding:2px 18px 16px;border-top:1px solid var(--line)}
+details.sub{border-radius:8px;margin:8px 0;background:var(--soft);border:0}details.sub>summary{font-weight:500;padding:8px 12px}
+.meta{color:var(--mute);font-size:13px}code{background:var(--soft);padding:1px 6px;border-radius:5px;font-size:12.5px}
+ul,ol{margin:6px 0 6px 20px;padding:0}li{margin:3px 0}
+table{width:100%;border-collapse:collapse;font-size:13.5px}th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--mute);font-weight:600}
+.s-Gap{color:var(--critical);font-weight:600}.s-Pass{color:var(--pass);font-weight:600}.s-Not{color:var(--mute);font-weight:600}
+footer{color:var(--mute);font-size:12.5px;margin-top:36px;padding-top:16px;border-top:1px solid var(--line)}
+@media (max-width:720px){.glance{grid-template-columns:1fr}.row{grid-template-columns:1fr}.row small{text-align:left}h1{font-size:26px}}
+@media print{body{background:#fff}.hero{-webkit-print-color-adjust:exact;print-color-adjust:exact}.card,.prio,details{break-inside:avoid;box-shadow:none}}
+'@
+
+    & $add @"
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>M365 Security Gap Assessment - $(& $enc $Assessment.TenantName)</title>
-<style>
-:root{--bg:#f6f7f9;--card:#fff;--ink:#1c2430;--mute:#5d6b7c;--line:#e2e6ec;--critical:#b42318;--high:#d9480f;--medium:#b7791f;--low:#2f6fba;--pass:#1b7f4b}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 -apple-system,Segoe UI,Roboto,sans-serif}
-main{max-width:1000px;margin:0 auto;padding:32px 20px}h1{margin:0 0 4px}h2{margin-top:36px;border-bottom:2px solid var(--line);padding-bottom:6px}
-.meta{color:var(--mute)}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin:18px 0}
-.tile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}.tile b{display:block;font-size:26px}
-table{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow:hidden}
-th,td{padding:8px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}th{background:#eef1f5}
-.finding{background:var(--card);border:1px solid var(--line);border-left:5px solid var(--mute);border-radius:8px;padding:14px 18px;margin:14px 0}
-.finding.Critical{border-left-color:var(--critical)}.finding.High{border-left-color:var(--high)}.finding.Medium{border-left-color:var(--medium)}.finding.Low{border-left-color:var(--low)}
-.badge{display:inline-block;padding:1px 9px;border-radius:99px;color:#fff;font-size:12px;font-weight:600;margin-right:6px}
-.badge.Critical{background:var(--critical)}.badge.High{background:var(--high)}.badge.Medium{background:var(--medium)}.badge.Low{background:var(--low)}
-.s-Gap{color:var(--critical);font-weight:600}.s-Pass{color:var(--pass);font-weight:600}.s-Not{color:var(--mute);font-weight:600}
-code{background:#eef1f5;padding:1px 5px;border-radius:4px}@media print{body{background:#fff}.finding{break-inside:avoid}}
-</style></head><body><main>
+<style>$css</style></head><body>
+<header class="hero"><div class="wrap"><div class="eyebrow">Security assessment</div>
 <h1>Microsoft 365 Security Gap Assessment</h1>
-<div class="meta">$(& $enc $Assessment.TenantName) &middot; <code>$(& $enc $Assessment.TenantId)</code> &middot; $($Assessment.AssessedAt.ToString('yyyy-MM-dd HH:mm')) UTC &middot; M365GapAssessment $(& $enc $Assessment.ModuleVersion) (read-only)</div>
-<h2>Executive Summary</h2>
-<div class="grid">
-<div class="tile">Compliance score<b>$(& $enc (Get-ScoreText $Assessment))</b></div>
-<div class="tile">Checks<b>$($Assessment.Summary.TotalChecks)</b></div>
-<div class="tile">Gaps<b>$($Assessment.Summary.Gaps)</b></div>
-<div class="tile">Not assessed<b>$($Assessment.Summary.NotAssessed)</b></div>
-<div class="tile">Accepted<b>$([int]$Assessment.Summary.Accepted)</b></div></div>
-<table><tr><th>Critical</th><th>High</th><th>Medium</th><th>Low</th></tr><tr><td>$($sev.Critical)</td><td>$($sev.High)</td><td>$($sev.Medium)</td><td>$($sev.Low)</td></tr></table>
-<h2>Control Compliance Matrix (NIST CSF 2.0 / SCF)</h2>
-<table><tr><th>NIST CSF 2.0</th><th>SCF</th><th>Status</th><th>Findings</th></tr>
-"@)
+<p>Prepared for <b>$(& $enc $Assessment.TenantName)</b> &middot; $($Assessment.AssessedAt.ToString('d MMMM yyyy'))</p></div></header>
+<main class="wrap">
+<section><div class="card glance">
+<div class="ring" style="--c:$scoreVar;--deg:$scoreDeg"><div><b style="color:$scoreVar">$scoreText</b><span>$scoreWord</span></div></div>
+<div>
+<div class="stats">
+<div class="stat"><b>$($sum.Passed)</b><span>checks passed</span></div>
+<div class="stat"><b>$($sum.Gaps)</b><span>gaps found</span></div>
+<div class="stat"><b>$assessed</b><span>settings assessed</span></div>
+$(if ($sum.Accepted) { "<div class=`"stat`"><b>$($sum.Accepted)</b><span>accepted risks</span></div>" })
+$(if ($sum.NotAssessed) { "<div class=`"stat`"><b>$($sum.NotAssessed)</b><span>not assessable</span></div>" })
+</div>
+"@
+    $sevTotal = [math]::Max(1, [int]$sev.Critical + [int]$sev.High + [int]$sev.Medium + [int]$sev.Low)
+    & $add '<div class="sevbar" role="img" aria-label="Gaps by severity">'
+    foreach ($s in 'Critical', 'High', 'Medium', 'Low') {
+        if ([int]$sev.$s -gt 0) { & $add "<i class=`"bg-$s`" style=`"width:$([math]::Round(100 * [int]$sev.$s / $sevTotal, 1))%`"></i>" }
+    }
+    & $add '</div><div class="legend">'
+    foreach ($s in 'Critical', 'High', 'Medium', 'Low') { & $add "<span><span class=`"dot bg-$s`"></span>$s $([int]$sev.$s)</span>" }
+    & $add '</div></div></div></section>'
+
+    # --- Priorities -----------------------------------------------------------------------------
+    $prio = @($gaps | Where-Object { $_.Severity -in 'Critical', 'High' -and $_.FindingId -ne 'SSC-002' } | Select-Object -First 8)
+    if ($prio.Count) {
+        & $add '<section><h2>Where to focus first</h2><p class="lede">The highest-impact gaps, with the first step to take on each.</p><div class="priorities">'
+        foreach ($g in $prio) {
+            $first = @($g.Remediation)[0]
+            & $add "<div class=`"prio $($g.Severity)`"><span class=`"badge bg-$($g.Severity)`">$($g.Severity)</span><h4>$(& $enc $g.Name)</h4>"
+            if ($g.Detail) { & $add "<p>$(& $enc $g.Detail)</p>" }
+            if ($first) { & $add "<div class=`"step`"><b>First step:</b> $(& $enc $first)</div>" }
+            & $add '</div>'
+        }
+        & $add '</div></section>'
+    }
+
+    # --- Posture by area ------------------------------------------------------------------------
+    & $add '<section><h2>Posture by area</h2><p class="lede">How each area of the tenant performed across the checks we ran.</p><div class="card rows">'
+    foreach ($d in ($f | Group-Object Domain | Sort-Object Name)) {
+        $n = $d.Count
+        $p = @($d.Group | Where-Object { $_.Status -in 'Pass', 'Accepted' }).Count
+        $g = @($d.Group | Where-Object Status -eq 'Gap').Count
+        $x = @($d.Group | Where-Object Status -eq 'NotAssessed').Count
+        & $add "<div class=`"row`"><b>$(& $enc $d.Name)</b><div class=`"track`" role=`"img`" aria-label=`"$p passed, $g gaps, $x not assessed`"><i class=`"pass`" style=`"width:$([math]::Round(100*$p/$n,1))%`"></i><i class=`"gapc`" style=`"width:$([math]::Round(100*$g/$n,1))%`"></i><i class=`"na`" style=`"width:$([math]::Round(100*$x/$n,1))%`"></i></div><small>$p passed &middot; $g gaps</small></div>"
+    }
+    & $add '</div><div class="legend" style="margin-top:8px"><span><span class="dot pass"></span>Passed</span><span><span class="dot gapc"></span>Gap</span><span><span class="dot na"></span>Not assessable</span></div></section>'
+
+    # --- Secure Score opportunity ---------------------------------------------------------------
+    $ws = @(($f | Where-Object { $_.FindingId -eq 'SSC-002' -and $_.Workloads } | Select-Object -First 1).Workloads)
+    if ($ws.Count) {
+        $maxPts = [math]::Max(1, ($ws | Measure-Object PointsAvailable -Maximum).Maximum)
+        & $add '<section><h2>Microsoft Secure Score: where the points are</h2><p class="lede">Points still available in each Microsoft 365 workload. Larger bars mean larger gains from the same effort.</p><div class="card rows">'
+        foreach ($w in ($ws | Select-Object -First 8)) {
+            & $add "<div class=`"row`"><b>$(& $enc $w.Workload)</b><div class=`"track`" role=`"img`" aria-label=`"$($w.PointsAvailable) points`"><i class=`"pts`" style=`"width:$([math]::Round(100 * $w.PointsAvailable / $maxPts, 1))%`"></i></div><small>$($w.PointsAvailable) pts &middot; $($w.Controls) controls</small></div>"
+        }
+        & $add '</div></section>'
+    }
+
+    # --- What's working -------------------------------------------------------------------------
+    $ok = @($f | Where-Object { $_.Status -in 'Pass', 'Accepted' })
+    if ($ok.Count) {
+        & $add '<section><h2>What is already working</h2><div class="chips" style="margin-top:10px">'
+        foreach ($p in $ok) { & $add "<span class=`"chip ok`">$(& $enc $p.Name)</span>" }
+        & $add '</div></section>'
+    }
+
+    # --- Technical detail -----------------------------------------------------------------------
+    & $add '<section><h2>Detailed findings</h2><p class="lede">Technical detail and remediation steps for each gap, grouped by area.</p>'
+    foreach ($domain in ($gaps | Group-Object Domain | Sort-Object Name)) {
+        & $add "<details><summary>$(& $enc $domain.Name) <span class=`"meta`">$($domain.Count) gap$(if ($domain.Count -ne 1) { 's' })</span></summary><div class=`"body`">"
+        foreach ($g in $domain.Group) {
+            & $add "<details class=`"sub`"><summary><span class=`"badge bg-$($g.Severity)`">$($g.Severity)</span>$(& $enc $g.Name)</summary><div class=`"body`" style=`"border:0`">"
+            $cis = if (@($g.CisControl).Count) { " &middot; CIS M365 v7.0.0 <code>$(& $enc (@($g.CisControl) -join ', '))</code>" } else { '' }
+            & $add "<div class=`"meta`"><code>$(& $enc $g.FindingId)</code> &middot; SCF <code>$(& $enc $g.ScfControl)</code> &middot; NIST CSF 2.0 <code>$(& $enc $g.NistCsf)</code>$cis</div>"
+            if ($g.Detail) { & $add "<p>$(& $enc $g.Detail)</p>" }
+            if ($g.AffectedCount -gt 0) {
+                & $add "<b>Affected ($($g.AffectedCount))</b><ul>"
+                foreach ($a in ($g.AffectedObjects | Select-Object -First 25)) { & $add "<li>$(& $enc $a)</li>" }
+                if ($g.AffectedCount -gt 25) { & $add "<li>&hellip;and $($g.AffectedCount - 25) more (see AssessmentFindings.json)</li>" }
+                & $add '</ul>'
+            }
+            & $add '<b>Remediation</b><ol>'
+            foreach ($step in $g.Remediation) { & $add "<li>$(& $enc $step)</li>" }
+            & $add '</ol></div></details>'
+        }
+        & $add '</div></details>'
+    }
+    & $add '</section>'
+
+    # --- Appendix -------------------------------------------------------------------------------
+    & $add '<section><h2>Appendix</h2><details><summary>Control compliance matrix (NIST CSF 2.0 / SCF)</summary><div class="body"><table><tr><th>NIST CSF 2.0</th><th>SCF</th><th>Status</th><th>Findings</th></tr>'
     foreach ($row in (Get-ComplianceMatrix -Findings $f)) {
         $cls = switch ($row.Status) { 'Gap' { 's-Gap' } 'Pass' { 's-Pass' } 'Accepted' { 's-Pass' } default { 's-Not' } }
-        [void]$sb.Append("<tr><td>$(& $enc $row.Nist)</td><td>$(& $enc $row.Scf)</td><td class=`"$cls`">$(& $enc $row.Status)</td><td>$(& $enc $row.Finding)</td></tr>")
+        & $add "<tr><td>$(& $enc $row.Nist)</td><td>$(& $enc $row.Scf)</td><td class=`"$cls`">$(& $enc $row.Status)</td><td>$(& $enc $row.Finding)</td></tr>"
     }
-    [void]$sb.Append('</table>')
+    & $add '</table></div></details>'
     if ($Assessment.Licensing) {
-        [void]$sb.Append('<h2>Licensing Context</h2><table><tr><th>Capability</th><th>Licensed</th></tr>')
+        & $add '<details><summary>Licensing context</summary><div class="body"><table><tr><th>Capability</th><th>Licensed</th></tr>'
         foreach ($cap in $Assessment.Licensing.Capabilities.PSObject.Properties) {
             $cls = if ($cap.Value) { 's-Pass' } else { 's-Not' }
-            [void]$sb.Append("<tr><td>$(& $enc $script:LicenseDisplay[$cap.Name])</td><td class=`"$cls`">$(if ($cap.Value) { 'Yes' } else { 'No' })</td></tr>")
+            & $add "<tr><td>$(& $enc $script:LicenseDisplay[$cap.Name])</td><td class=`"$cls`">$(if ($cap.Value) { 'Yes' } else { 'No' })</td></tr>"
         }
-        [void]$sb.Append('</table><p class="meta">Checks that need an unlicensed capability are reported as Not assessed rather than passed.</p>')
+        & $add '</table><p class="meta">Checks that need an unlicensed capability are reported as not assessable rather than passed.</p></div></details>'
     }
-    [void]$sb.Append('<h2>Detailed Findings</h2>')
-    foreach ($domain in ($gaps | Group-Object Domain | Sort-Object Name)) {
-        [void]$sb.Append("<h3>$(& $enc $domain.Name)</h3>")
-        foreach ($g in $domain.Group) {
-            [void]$sb.Append("<div class=`"finding $($g.Severity)`"><span class=`"badge $($g.Severity)`">$($g.Severity)</span><b>$(& $enc $g.FindingId) &ndash; $(& $enc $g.Name)</b>")
-            [void]$sb.Append("<div class=`"meta`">SCF <code>$(& $enc $g.ScfControl)</code> &middot; NIST CSF 2.0 <code>$(& $enc $g.NistCsf)</code>$(if (@($g.CisControl).Count) { " &middot; CIS M365 v7.0.0 <code>$(& $enc (@($g.CisControl) -join ', '))</code>" })</div>")
-            if ($g.Detail) { [void]$sb.Append("<p>$(& $enc $g.Detail)</p>") }
-            if ($g.AffectedCount -gt 0) {
-                [void]$sb.Append("<details><summary>Affected ($($g.AffectedCount))</summary><ul>")
-                foreach ($a in ($g.AffectedObjects | Select-Object -First 25)) { [void]$sb.Append("<li>$(& $enc $a)</li>") }
-                if ($g.AffectedCount -gt 25) { [void]$sb.Append("<li>&hellip;and $($g.AffectedCount - 25) more (see JSON)</li>") }
-                [void]$sb.Append('</ul></details>')
-            }
-            if ($g.Workloads) {
-                [void]$sb.Append('<table><tr><th>Workload</th><th>Controls</th><th>Points available</th><th>Biggest wins</th></tr>')
-                foreach ($w in $g.Workloads) { [void]$sb.Append("<tr><td>$(& $enc $w.Workload)</td><td>$($w.Controls)</td><td>$($w.PointsAvailable)</td><td>$(& $enc (@($w.Top) -join '; '))</td></tr>") }
-                [void]$sb.Append('</table>')
-            }
-            [void]$sb.Append('<b>Remediation</b><ol>')
-            foreach ($step in $g.Remediation) { [void]$sb.Append("<li>$(& $enc $step)</li>") }
-            [void]$sb.Append('</ol></div>')
-        }
-    }
-    [void]$sb.Append('</main></body></html>')
+    & $add '</section>'
+
+    & $add @"
+<footer>Tenant <code>$(& $enc $Assessment.TenantId)</code> &middot; assessed $($Assessment.AssessedAt.ToString('yyyy-MM-dd HH:mm')) UTC &middot; M365GapAssessment $(& $enc $Assessment.ModuleVersion). Read-only assessment: no changes were made to the tenant. The score weights each check by severity (Critical 10, High 5, Medium 3, Low 1).</footer>
+</main>
+<script>window.addEventListener('beforeprint',function(){document.querySelectorAll('details').forEach(function(d){d.open=true})})</script>
+</body></html>
+"@
     $sb.ToString()
 }
 
