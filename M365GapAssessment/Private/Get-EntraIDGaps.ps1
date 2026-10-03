@@ -86,6 +86,40 @@ function Get-EntraIDGaps {
             -Detail "$($gaUsers.Count) distinct users hold Global Administrator (active or activated). Threshold: 5."
     }
 
+    # --- Stale eligible PIM assignments --------------------------------------------------------
+    Write-Progress -Id 2 -ParentId 1 -Activity 'Entra ID' -Status 'Stale eligible assignments' -PercentComplete 30
+    Invoke-Collector -Name 'Stale eligible assignments' -FindingIds 'ENT-USR-006' -Script {
+        $cutoff = $now.AddDays(-$StaleDays)
+        $eligible = @(Get-GraphPagedResult -Uri '/v1.0/roleManagement/directory/roleEligibilitySchedules?$expand=principal,roleDefinition' |
+                Where-Object { $_.roleDefinition.displayName -in $privilegedRoles })
+
+        # Eligibility never expires on its own, so judge it by the holder: disabled, or no sign-in within $StaleDays.
+        $userIds = @($eligible | Where-Object { $_.principal.'@odata.type' -eq '#microsoft.graph.user' } | ForEach-Object { $_.principalId } | Sort-Object -Unique)
+        $users = @{}
+        foreach ($id in $userIds) {
+            $users[$id] = Invoke-GraphRequestWithRetry -Uri "/v1.0/users/$id`?`$select=id,userPrincipalName,accountEnabled,createdDateTime,signInActivity"
+        }
+
+        $stale = foreach ($e in $eligible) {
+            $role = $e.roleDefinition.displayName
+            if ($e.principal.'@odata.type' -ne '#microsoft.graph.user') { continue }
+            $u = $users[$e.principalId]
+            if (-not $u) { continue }
+            if ($u.accountEnabled -eq $false) { "$($u.userPrincipalName) - $role (account disabled)"; continue }
+            $dates = @($u.signInActivity.lastSignInDateTime, $u.signInActivity.lastNonInteractiveSignInDateTime, $u.signInActivity.lastSuccessfulSignInDateTime |
+                    Where-Object { $_ } | ForEach-Object { ([datetime]$_).ToUniversalTime() })
+            if ($dates.Count) {
+                $last = ($dates | Measure-Object -Maximum).Maximum
+                if ($last -lt $cutoff) { "$($u.userPrincipalName) - $role (last sign-in $($last.ToString('yyyy-MM-dd')))" }
+            }
+            elseif (([datetime]$u.createdDateTime).ToUniversalTime() -lt $cutoff) {
+                "$($u.userPrincipalName) - $role (never signed in)"
+            }
+        }
+        New-Finding -Id 'ENT-USR-006' -Status $(if (@($stale).Count) { 'Gap' } else { 'Pass' }) -AffectedObjects @($stale) `
+            -Detail "Eligible privileged role assignments held by users disabled or inactive for more than $StaleDays days ($($eligible.Count) eligible assignments reviewed). Eligible users who never activate are unused standing privilege."
+    }
+
     # --- MFA registration ---------------------------------------------------------------------
     Write-Progress -Id 2 -ParentId 1 -Activity 'Entra ID' -Status 'MFA registration' -PercentComplete 40
     Invoke-Collector -Name 'MFA registration' -FindingIds 'ENT-USR-003', 'ENT-USR-004' -Script {

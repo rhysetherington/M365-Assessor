@@ -82,6 +82,15 @@
       ]
     },
     {
+      "id": "ENT-USR-006", "domain": "Entra ID", "name": "Stale eligible privileged role assignments", "severity": "Medium",
+      "scf": "IAC-17", "nistCsf": "PR.AA-05",
+      "remediation": [
+        "Entra admin center > Identity governance > Privileged Identity Management > Microsoft Entra roles > Assignments > Eligible assignments.",
+        "Remove eligible assignments for disabled or inactive accounts, or confirm each one with the role owner.",
+        "Set an expiry on eligible assignments and configure PIM access reviews (quarterly) for privileged roles."
+      ]
+    },
+    {
       "id": "ENT-USR-005", "domain": "Entra ID", "name": "Excessive number of Global Administrators", "severity": "Medium",
       "scf": "IAC-21", "nistCsf": "PR.AA-05",
       "remediation": [
