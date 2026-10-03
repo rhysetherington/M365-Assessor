@@ -128,6 +128,7 @@ function New-Finding {
         Detail          = $Detail
         ScfControl      = $map.scf
         NistCsf         = $map.nistCsf
+        CisControl      = @($map.cis | Where-Object { $_ })
         Remediation     = @($map.remediation)
     }
     foreach ($k in $Extra.Keys) { $finding | Add-Member -NotePropertyName $k -NotePropertyValue $Extra[$k] }

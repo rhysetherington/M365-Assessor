@@ -1,6 +1,6 @@
 {
   "version": "1.0.0",
-  "notes": "SCF control IDs and NIST CSF 2.0 subcategories are best-fit mappings; validate against the SCF release (e.g. 2025.x) your client uses. NIST CSF 2.0 subcategory is the primary mapping per finding.",
+  "notes": "CIS Microsoft 365 Foundations Benchmark v7.0.0 recommendation numbers ('cis') are mapped only where a check clearly tests the same setting; unmapped checks have no CIS equivalent. SCF control IDs and NIST CSF 2.0 subcategories are best-fit mappings; validate against the SCF release (e.g. 2025.x) your client uses. NIST CSF 2.0 subcategory is the primary mapping per finding.",
   "controls": [
     {
       "id": "ENT-CA-001", "domain": "Entra ID", "name": "Conditional Access policies in report-only mode", "severity": "Medium",
@@ -24,7 +24,7 @@
     },
     {
       "id": "ENT-CA-003", "domain": "Entra ID", "name": "No Conditional Access policy blocking legacy authentication", "severity": "High",
-      "scf": "CFG-03", "nistCsf": "PR.AA-03",
+      "scf": "CFG-03", "nistCsf": "PR.AA-03", "cis": ["5.2.2.3"],
       "remediation": [
         "Entra admin center > Sign-in logs > filter Client app = legacy clients to find dependent apps first.",
         "Conditional Access > New policy > Users: All users (exclude break-glass).",
@@ -34,7 +34,7 @@
     },
     {
       "id": "ENT-CA-004", "domain": "Entra ID", "name": "No enforced Conditional Access policy requiring MFA for administrators", "severity": "Critical",
-      "scf": "IAC-06", "nistCsf": "PR.AA-03",
+      "scf": "IAC-06", "nistCsf": "PR.AA-03", "cis": ["5.2.2.1"],
       "remediation": [
         "Conditional Access > New policy > Users: Directory roles (select all privileged roles) or All users.",
         "Target resources: All cloud apps (or at minimum Microsoft Admin Portals).",
@@ -44,7 +44,7 @@
     },
     {
       "id": "ENT-USR-001", "domain": "Entra ID", "name": "Privileged roles assigned permanently (not managed with PIM)", "severity": "High",
-      "scf": "IAC-16", "nistCsf": "PR.AA-05",
+      "scf": "IAC-16", "nistCsf": "PR.AA-05", "cis": ["5.3.1"],
       "remediation": [
         "Entra admin center > Identity governance > Privileged Identity Management > Microsoft Entra roles > Assignments.",
         "For each permanent active assignment: Add assignment as Eligible, then remove the permanent Active assignment.",
@@ -64,7 +64,7 @@
     },
     {
       "id": "ENT-USR-003", "domain": "Entra ID", "name": "Member users not registered for MFA", "severity": "High",
-      "scf": "IAC-06", "nistCsf": "PR.AA-03",
+      "scf": "IAC-06", "nistCsf": "PR.AA-03", "cis": ["5.2.3.4"],
       "remediation": [
         "Entra admin center > Protection > Authentication methods > User registration details (filter MFA registered = No).",
         "Enable the Microsoft Authenticator / FIDO2 methods and the registration campaign (Authentication methods > Registration campaign).",
@@ -92,7 +92,7 @@
     },
     {
       "id": "ENT-USR-005", "domain": "Entra ID", "name": "Excessive number of Global Administrators", "severity": "Medium",
-      "scf": "IAC-21", "nistCsf": "PR.AA-05",
+      "scf": "IAC-21", "nistCsf": "PR.AA-05", "cis": ["1.1.3"],
       "remediation": [
         "Entra admin center > Roles & admins > Global Administrator > review each assignment.",
         "Move delegated tasks to least-privileged roles (e.g. Exchange, SharePoint, User, Security Administrator).",
@@ -212,7 +212,7 @@
     },
     {
       "id": "ENT-POL-001", "domain": "Entra ID", "name": "Users can consent to any application (legacy user consent policy)", "severity": "High",
-      "scf": "IAC-20", "nistCsf": "PR.AA-05", "license": "EntraP1",
+      "scf": "IAC-20", "nistCsf": "PR.AA-05", "cis": ["5.1.5.1"], "license": "EntraP1",
       "remediation": [
         "Entra admin center > Enterprise applications > Consent and permissions > User consent settings.",
         "Select 'Do not allow user consent' (preferred) or 'Allow user consent for apps from verified publishers, for selected permissions'.",
@@ -222,7 +222,7 @@
     },
     {
       "id": "ENT-POL-002", "domain": "Entra ID", "name": "Admin consent request workflow disabled", "severity": "Medium",
-      "scf": "IAC-20", "nistCsf": "PR.AA-05",
+      "scf": "IAC-20", "nistCsf": "PR.AA-05", "cis": ["5.1.5.2"],
       "remediation": [
         "Entra admin center > Enterprise applications > Consent and permissions > Admin consent settings.",
         "Set 'Users can request admin consent to apps they are unable to consent to' = Yes.",
@@ -231,7 +231,7 @@
     },
     {
       "id": "ENT-POL-003", "domain": "Entra ID", "name": "Unprivileged users can register applications or create tenants", "severity": "Medium",
-      "scf": "IAC-21", "nistCsf": "PR.AA-05",
+      "scf": "IAC-21", "nistCsf": "PR.AA-05", "cis": ["5.1.2.2", "5.1.2.3"],
       "remediation": [
         "Entra admin center > Identity > Users > User settings.",
         "Set 'Users can register applications' = No and 'Restrict non-admin users from creating tenants' = Yes.",
@@ -240,7 +240,7 @@
     },
     {
       "id": "ENT-POL-004", "domain": "Entra ID", "name": "Anyone, including guests, can invite external users", "severity": "Medium",
-      "scf": "IAC-17", "nistCsf": "PR.AA-05",
+      "scf": "IAC-17", "nistCsf": "PR.AA-05", "cis": ["5.1.6.3"],
       "remediation": [
         "Entra admin center > External Identities > External collaboration settings > Guest invite settings.",
         "Choose 'Only users assigned to specific admin roles can invite guest users' (or members only for collaborative tenants).",
@@ -249,7 +249,7 @@
     },
     {
       "id": "ENT-POL-005", "domain": "Entra ID", "name": "Guest user access is as permissive as member access", "severity": "High",
-      "scf": "IAC-21", "nistCsf": "PR.AA-05",
+      "scf": "IAC-21", "nistCsf": "PR.AA-05", "cis": ["5.1.6.2"],
       "remediation": [
         "Entra admin center > External Identities > External collaboration settings > Guest user access.",
         "Select 'Guest user access is restricted to properties and memberships of their own directory objects'.",
@@ -268,7 +268,7 @@
     },
     {
       "id": "ENT-AUTH-001", "domain": "Entra ID", "name": "Weak authentication methods (SMS / voice) enabled", "severity": "Medium",
-      "scf": "IAC-06", "nistCsf": "PR.AA-03", "license": "EntraP1",
+      "scf": "IAC-06", "nistCsf": "PR.AA-03", "cis": ["5.2.3.5"], "license": "EntraP1",
       "remediation": [
         "Entra admin center > Protection > Authentication methods > Policies.",
         "Disable SMS and Voice call (or target them only to groups that genuinely need them).",
@@ -277,7 +277,7 @@
     },
     {
       "id": "ENT-AUTH-002", "domain": "Entra ID", "name": "Microsoft Authenticator disabled or number matching off", "severity": "Medium",
-      "scf": "IAC-06", "nistCsf": "PR.AA-03",
+      "scf": "IAC-06", "nistCsf": "PR.AA-03", "cis": ["5.2.3.1"],
       "remediation": [
         "Entra admin center > Protection > Authentication methods > Policies > Microsoft Authenticator.",
         "Enable the method for all users and set 'Require number matching for push notifications' to Enabled.",
@@ -295,7 +295,7 @@
     },
     {
       "id": "ENT-AUTH-004", "domain": "Entra ID", "name": "Custom banned password list not configured", "severity": "Medium",
-      "scf": "IAC-10.1", "nistCsf": "PR.AA-01", "license": "EntraP1",
+      "scf": "IAC-10.1", "nistCsf": "PR.AA-01", "cis": ["5.2.3.2"], "license": "EntraP1",
       "remediation": [
         "Entra admin center > Protection > Authentication methods > Password protection.",
         "Set 'Enforce custom list' = Yes and add organisation-specific terms (company, product, location names).",
@@ -304,7 +304,7 @@
     },
     {
       "id": "ENT-CA-005", "domain": "Entra ID", "name": "No Conditional Access policy requires a compliant or managed device", "severity": "Medium",
-      "scf": "IAC-04", "nistCsf": "PR.AA-03", "license": "EntraP1",
+      "scf": "IAC-04", "nistCsf": "PR.AA-03", "cis": ["5.2.2.9"], "license": "EntraP1",
       "remediation": [
         "Ensure devices are enrolled in Intune with a compliance policy.",
         "Conditional Access > New policy > Users: All users; Target: Office 365 (or all apps); Grant: Require device to be marked as compliant (or Entra hybrid joined).",
@@ -322,7 +322,7 @@
     },
     {
       "id": "ENT-CA-007", "domain": "Entra ID", "name": "No risk-based Conditional Access (sign-in risk / user risk)", "severity": "High",
-      "scf": "MON-16", "nistCsf": "DE.CM-03", "license": "EntraP2",
+      "scf": "MON-16", "nistCsf": "DE.CM-03", "cis": ["5.2.2.6", "5.2.2.7", "5.2.2.8"], "license": "EntraP2",
       "remediation": [
         "Requires Entra ID P2 (Identity Protection).",
         "Conditional Access > New policy > Conditions > Sign-in risk: Medium and above > Grant: Require MFA.",
@@ -332,7 +332,7 @@
     },
     {
       "id": "ENT-CA-008", "domain": "Entra ID", "name": "No location-based access controls (named locations)", "severity": "Low",
-      "scf": "IAC-20", "nistCsf": "PR.AA-05", "license": "EntraP1",
+      "scf": "IAC-20", "nistCsf": "PR.AA-05", "cis": ["5.2.2.14"], "license": "EntraP1",
       "remediation": [
         "Conditional Access > Named locations: define trusted countries/IP ranges.",
         "Create a policy blocking sign-ins from countries where you have no users or business.",
@@ -341,7 +341,7 @@
     },
     {
       "id": "ENT-PIM-001", "domain": "Entra ID", "name": "Global Administrator activation settings are weak", "severity": "High",
-      "scf": "IAC-16", "nistCsf": "PR.AA-05", "license": "EntraP2",
+      "scf": "IAC-16", "nistCsf": "PR.AA-05", "cis": ["5.3.4"], "license": "EntraP2",
       "remediation": [
         "Entra admin center > Identity governance > Privileged Identity Management > Microsoft Entra roles > Settings > Global Administrator > Edit.",
         "Activation: set a maximum duration of 8 hours or less, require MFA (or authentication context) and justification.",
@@ -386,7 +386,7 @@
     },
     {
       "id": "ENT-GOV-001", "domain": "Entra ID", "name": "No access reviews configured", "severity": "Medium",
-      "scf": "IAC-17", "nistCsf": "PR.AA-05", "license": "EntraP2",
+      "scf": "IAC-17", "nistCsf": "PR.AA-05", "cis": ["5.3.2", "5.3.3"], "license": "EntraP2",
       "remediation": [
         "Entra admin center > Identity governance > Access reviews > New access review.",
         "Start with privileged role assignments, guest users and groups that grant access to sensitive resources.",
@@ -412,7 +412,7 @@
     },
     {
       "id": "EML-001", "domain": "Email Security", "name": "SPF missing or weak on email domains", "severity": "Medium",
-      "scf": "NET-12", "nistCsf": "PR.IR-01",
+      "scf": "NET-12", "nistCsf": "PR.IR-01", "cis": ["2.1.8"],
       "remediation": [
         "DNS provider > add a single TXT record at the domain apex: v=spf1 include:spf.protection.outlook.com -all (plus any other legitimate senders).",
         "Remove duplicate SPF records (only one is valid) and avoid +all / ?all.",
@@ -421,7 +421,7 @@
     },
     {
       "id": "EML-002", "domain": "Email Security", "name": "DMARC missing or monitoring-only (p=none)", "severity": "High",
-      "scf": "NET-12", "nistCsf": "PR.IR-01",
+      "scf": "NET-12", "nistCsf": "PR.IR-01", "cis": ["2.1.10"],
       "remediation": [
         "DNS provider > add TXT record _dmarc.<domain>: v=DMARC1; p=none; rua=mailto:dmarc-reports@<domain> to start monitoring.",
         "Review aggregate reports, fix legitimate senders, then move to p=quarantine and finally p=reject.",
@@ -430,7 +430,7 @@
     },
     {
       "id": "EML-003", "domain": "Email Security", "name": "DKIM signing not configured for Exchange Online domains", "severity": "Medium",
-      "scf": "NET-12", "nistCsf": "PR.IR-01",
+      "scf": "NET-12", "nistCsf": "PR.IR-01", "cis": ["2.1.9"],
       "remediation": [
         "Defender portal > Email & collaboration > Policies & rules > Threat policies > Email authentication settings > DKIM.",
         "Select the domain, create DKIM keys and publish the two CNAME records (selector1/selector2._domainkey) at your DNS provider.",

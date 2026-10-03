@@ -1,7 +1,7 @@
 # M365GapAssessment
 
 Read-only Microsoft 365 security gap assessment for PowerShell 7+. Collects Entra ID, Defender/Intune and Secure Score
-data through Microsoft Graph, maps every check to **SCF** and **NIST CSF 2.0**, and exports JSON, Markdown and an
+data through Microsoft Graph, maps every check to **SCF** and **NIST CSF 2.0** (plus **CIS Microsoft 365 Foundations v7.0.0** where a check clearly matches a recommendation), and exports JSON, Markdown and an
 executive HTML report. Built for a reviewer signed in as **Global Reader** and for repeatable multi-tenant (MSP) use.
 
 The module never writes to a tenant: every call is an HTTP `GET`.

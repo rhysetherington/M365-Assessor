@@ -74,7 +74,8 @@ function New-AssessmentMarkdown {
             $md.Add('')
             $md.Add("#### [$($g.Severity)] $($g.FindingId) - $($g.Name)")
             $md.Add('')
-            $md.Add("- **SCF:** $($g.ScfControl)  |  **NIST CSF 2.0:** $($g.NistCsf)")
+            $cis = if (@($g.CisControl).Count) { "  |  **CIS M365 v7.0.0:** $(@($g.CisControl) -join ', ')" } else { '' }
+            $md.Add("- **SCF:** $($g.ScfControl)  |  **NIST CSF 2.0:** $($g.NistCsf)$cis")
             if ($g.Detail) { $md.Add("- **Detail:** $($g.Detail)") }
             if ($g.AffectedCount -gt 0) {
                 $md.Add("- **Affected ($($g.AffectedCount)):**")
@@ -177,7 +178,7 @@ code{background:#eef1f5;padding:1px 5px;border-radius:4px}@media print{body{back
         [void]$sb.Append("<h3>$(& $enc $domain.Name)</h3>")
         foreach ($g in $domain.Group) {
             [void]$sb.Append("<div class=`"finding $($g.Severity)`"><span class=`"badge $($g.Severity)`">$($g.Severity)</span><b>$(& $enc $g.FindingId) &ndash; $(& $enc $g.Name)</b>")
-            [void]$sb.Append("<div class=`"meta`">SCF <code>$(& $enc $g.ScfControl)</code> &middot; NIST CSF 2.0 <code>$(& $enc $g.NistCsf)</code></div>")
+            [void]$sb.Append("<div class=`"meta`">SCF <code>$(& $enc $g.ScfControl)</code> &middot; NIST CSF 2.0 <code>$(& $enc $g.NistCsf)</code>$(if (@($g.CisControl).Count) { " &middot; CIS M365 v7.0.0 <code>$(& $enc (@($g.CisControl) -join ', '))</code>" })</div>")
             if ($g.Detail) { [void]$sb.Append("<p>$(& $enc $g.Detail)</p>") }
             if ($g.AffectedCount -gt 0) {
                 [void]$sb.Append("<details><summary>Affected ($($g.AffectedCount))</summary><ul>")

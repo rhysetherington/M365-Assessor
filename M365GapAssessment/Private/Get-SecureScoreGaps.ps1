@@ -9,6 +9,12 @@ function Get-SecureScoreGaps {
         [int]$HighValuePoints = 5
     )
 
+    # Graph returns product codes in secureScoreControlProfile.service; unknown codes pass through unchanged.
+    $workloadNames = @{
+        MDO = 'Defender for Office 365'; AzureAD = 'Entra ID'; EXO = 'Exchange Online'; MIP = 'Purview Information Protection'
+        SPO = 'SharePoint Online'; 'MS Teams' = 'Microsoft Teams'; Admincenter = 'Microsoft 365 admin center'; SWAY = 'Sway'
+        MDE = 'Defender for Endpoint'; MCAS = 'Defender for Cloud Apps'; MDI = 'Defender for Identity'; Intune = 'Intune'
+    }
     Write-Progress -Id 2 -ParentId 1 -Activity 'Secure Score' -Status 'Retrieving score and control profiles' -PercentComplete 10
     Invoke-Collector -Name 'Secure Score' -FindingIds 'SSC-001', 'SSC-002', 'SSC-003' -Script {
         $latest = @(Get-GraphPagedResult -Uri '/v1.0/security/secureScores?$top=1' -MaxItems 1) | Select-Object -First 1
@@ -38,7 +44,7 @@ function Get-SecureScoreGaps {
             if ($achieved -ge $max -or $status -match '^(implemented|completed)$') { continue }
             [pscustomobject]@{
                 Category = $cs.controlCategory
-                Workload = if ($profile.service) { [string]$profile.service } elseif ($cs.controlCategory) { [string]$cs.controlCategory } else { 'Other' }
+                Workload = & { $w = if ($profile.service) { [string]$profile.service } elseif ($cs.controlCategory) { [string]$cs.controlCategory } else { 'Other' }; if ($workloadNames.ContainsKey($w)) { $workloadNames[$w] } else { $w } }
                 Title    = if ($profile.title) { $profile.title } else { $cs.controlName }
                 Achieved = $achieved
                 Max      = $max
