@@ -150,3 +150,21 @@ Convert-M365Report -Path .\Assessments\<run>\AssessmentFindings.json -ClientName
 ```
 
 `-LogoPath` accepts PNG, JPG or SVG and is embedded in the HTML, so the report stays a single file.
+
+## Security and data handling
+
+- **No stored tenant or credentials.** The tenant is never written into the module or scripts: omit `-TenantId` and you are prompted
+  (GUID or domain, validated before use). `-TenantId` values are format-checked, so they cannot inject paths or URLs.
+- **Sign-in.** Interactive/device-code sessions use `ContextScope Process`, so tokens are not cached to disk. App-only runs take a
+  `[pscredential]` (secret stays a SecureString) or a certificate thumbprint; never put secrets in scripts. Prefer certificates.
+- **Read-only.** Graph calls are `GET`; Exchange, Teams and SharePoint use `Get-*` only.
+- **Local storage only.** Reports go to `./Assessments` (git-ignored). On macOS/Linux each run folder is created `700` with `600` files;
+  on Windows rely on NTFS permissions on the export path. Reports contain tenant IDs, user principal names and security gaps, so treat
+  them as confidential client data and delete them per your retention policy.
+- **Sharing.** Use `-HideTenantId` (on `Invoke-M365SecurityReview` or `Convert-M365Report`) for client-facing HTML. Folder names and
+  the JSON/Markdown still include the tenant ID because they are for your records.
+- **HTML safety.** All tenant-supplied text is HTML-encoded, branding colour is validated as `#rrggbb`, and logos load via `<img>` data
+  URIs (scripts inside an SVG do not run). Markdown output escapes `<`, `>` and `|`.
+- **DNS lookups.** On macOS/Linux, SPF/DKIM/DMARC lookups use DNS-over-HTTPS (default Cloudflare), which sends the client's domain
+  names to that provider. Use `-DohEndpoint` to point at your own resolver (https only).
+- **Repository hygiene.** `.gitignore` excludes assessments, certificates, keys, logs and accepted-risk files (client-specific).

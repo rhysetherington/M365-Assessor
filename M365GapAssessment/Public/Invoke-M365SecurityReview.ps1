@@ -9,6 +9,7 @@ function Invoke-M365SecurityReview {
     #>
     [CmdletBinding()]
     param(
+        [ValidateScript({ if (Test-TenantIdentifier $_) { $true } else { throw "'$_' is not a tenant GUID or a domain name." } })]
         [string[]]$TenantId,
         [string]$ExportPath = (Join-Path (Get-Location) 'M365Assessment'),
         [ValidateSet('JSON', 'HTML', 'Markdown')][string[]]$Format = @('JSON', 'Markdown'),
@@ -27,18 +28,19 @@ function Invoke-M365SecurityReview {
         [string]$PreparedBy,
         [ValidatePattern('^#[0-9a-fA-F]{6}$')][string]$BrandColor,
         [string]$LogoPath,
+        [switch]$HideTenantId,
         [switch]$SkipRoleCheck,
         [switch]$NoExport
     )
 
-    # A $null entry means "reuse the current Graph session / default tenant"; the comma keeps it from unrolling to nothing.
-    $tenants = @(if ($TenantId) { $TenantId } else { , $null })
+    # No tenant is stored in the module or in scripts: prompt when it was not supplied.
+    $tenants = @(if ($TenantId) { $TenantId } else { Read-TenantIdentifier })
     $tenantIndex = 0
 
     foreach ($tenant in $tenants) {
         $tenantIndex++
         $base = [int](($tenantIndex - 1) / $tenants.Count * 100)
-        $label = if ($tenant) { $tenant } else { 'current session' }
+        $label = $tenant
         Write-Progress -Id 1 -Activity "M365 Gap Assessment [$label]" -Status 'Connecting' -PercentComplete $base
 
         # --- Connect -------------------------------------------------------------------------
@@ -111,7 +113,7 @@ function Invoke-M365SecurityReview {
             ExportedFiles = @()
         }
 
-        $branding = @{ ClientName = $ClientName; PreparedBy = $PreparedBy; BrandColor = $BrandColor; LogoPath = $LogoPath }
+        $branding = @{ ClientName = $ClientName; PreparedBy = $PreparedBy; BrandColor = $BrandColor; LogoPath = $LogoPath; HideTenantId = [bool]$HideTenantId }
         # --- Export --------------------------------------------------------------------------
         if (-not $NoExport) {
             Write-Progress -Id 1 -Activity "M365 Gap Assessment [$($context.TenantId)]" -Status 'Exporting reports' -PercentComplete ($base + 95 / $tenants.Count)

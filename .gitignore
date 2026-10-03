@@ -1,2 +1,9 @@
 Assessments/
 .DS_Store
+# never commit credentials, certificates or client-specific inputs
+*.pfx
+*.pem
+*.key
+*.env
+*accepted*.json
+*.log

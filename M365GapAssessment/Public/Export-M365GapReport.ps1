@@ -1,6 +1,7 @@
 function ConvertTo-MdCell {
     param($Text)
-    ([string]$Text) -replace '\|', '\|' -replace '\r?\n', ' '
+    # Tenant-controlled text (display names, policy names) must not become live Markdown/HTML in a viewer.
+    ([string]$Text) -replace '<', '&lt;' -replace '>', '&gt;' -replace '\|', '\|' -replace '\r?\n', ' '
 }
 
 function Get-ScoreText {
@@ -248,7 +249,7 @@ $(if ($sum.NotAssessed) { "<div class=`"stat`"><b>$($sum.NotAssessed)</b><span>n
         $p = @($d.Group | Where-Object { $_.Status -in 'Pass', 'Accepted' }).Count
         $g = @($d.Group | Where-Object Status -eq 'Gap').Count
         $x = @($d.Group | Where-Object Status -eq 'NotAssessed').Count
-        & $add "<div class=`"row`"><b>$(& $enc $d.Name)</b><div class=`"track`" role=`"img`" aria-label=`"$p passed, $g gaps, $x not assessed`"><i class=`"pass`" style=`"width:$([math]::Round(100*$p/$n,1))%`"></i><i class=`"gapc`" style=`"width:$([math]::Round(100*$g/$n,1))%`"></i><i class=`"na`" style=`"width:$([math]::Round(100*$x/$n,1))%`"></i></div><small>$p passed &middot; $g gaps</small></div>"
+        & $add "<div class=`"row`"><b>$(& $enc $d.Name)</b><div class=`"track`" role=`"img`" aria-label=`"$p passed, $g gaps, $x not assessed`"><i class=`"pass`" style=`"width:$([math]::Round(100*$p/$n,1))%`"></i><i class=`"gapc`" style=`"width:$([math]::Round(100*$g/$n,1))%`"></i><i class=`"na`" style=`"width:$([math]::Round(100*$x/$n,1))%`"></i></div><small>$([int]$p) passed &middot; $([int]$g) gaps</small></div>"
     }
     & $add '</div><div class="legend" style="margin-top:8px"><span><span class="dot pass"></span>Passed</span><span><span class="dot gapc"></span>Gap</span><span><span class="dot na"></span>Not assessable</span></div></section>'
 
@@ -258,7 +259,7 @@ $(if ($sum.NotAssessed) { "<div class=`"stat`"><b>$($sum.NotAssessed)</b><span>n
         $maxPts = [math]::Max(1, ($ws | Measure-Object PointsAvailable -Maximum).Maximum)
         & $add '<section><h2>Microsoft Secure Score: where the points are</h2><p class="lede">Points still available in each Microsoft 365 workload. Larger bars mean larger gains from the same effort.</p><div class="card rows">'
         foreach ($w in ($ws | Select-Object -First 8)) {
-            & $add "<div class=`"row`"><b>$(& $enc $w.Workload)</b><div class=`"track`" role=`"img`" aria-label=`"$($w.PointsAvailable) points`"><i class=`"pts`" style=`"width:$([math]::Round(100 * $w.PointsAvailable / $maxPts, 1))%`"></i></div><small>$($w.PointsAvailable) pts &middot; $($w.Controls) controls</small></div>"
+            & $add "<div class=`"row`"><b>$(& $enc $w.Workload)</b><div class=`"track`" role=`"img`" aria-label=`"$([double]$w.PointsAvailable) points`"><i class=`"pts`" style=`"width:$([math]::Round(100 * $w.PointsAvailable / $maxPts, 1))%`"></i></div><small>$([double]$w.PointsAvailable) pts &middot; $([int]$w.Controls) controls</small></div>"
         }
         & $add '</div></section>'
     }
@@ -312,7 +313,7 @@ $(if ($sum.NotAssessed) { "<div class=`"stat`"><b>$($sum.NotAssessed)</b><span>n
     & $add '</section>'
 
     & $add @"
-<footer>Tenant <code>$(& $enc $Assessment.TenantId)</code> &middot; assessed $($assessedAt.ToString('yyyy-MM-dd HH:mm')) UTC &middot; M365GapAssessment $(& $enc $Assessment.ModuleVersion). Read-only assessment: no changes were made to the tenant. The score weights each check by severity (Critical 10, High 5, Medium 3, Low 1).</footer>
+<footer>$(if (-not $Branding.HideTenantId) { "Tenant <code>$(& $enc $Assessment.TenantId)</code> &middot; " })Assessed $($assessedAt.ToString('yyyy-MM-dd HH:mm')) UTC &middot; M365GapAssessment $(& $enc $Assessment.ModuleVersion). Read-only assessment: no changes were made to the tenant. The score weights each check by severity (Critical 10, High 5, Medium 3, Low 1).</footer>
 </main>
 <script>window.addEventListener('beforeprint',function(){document.querySelectorAll('details').forEach(function(d){d.open=true})})</script>
 </body></html>
@@ -352,6 +353,7 @@ function Export-M365GapReport {
                 New-AssessmentHtml -Assessment $Assessment -Branding $Branding | Set-Content -Path $p -Encoding utf8
                 $written.Add($p)
             }
+            Protect-ExportPath -Path $ExportPath
             $written.ToArray()
         }
         catch { throw "Report export failed: $($_.Exception.Message)" }

@@ -11,6 +11,7 @@ function Resolve-DnsRecordValue {
         [string]$DohEndpoint = 'https://cloudflare-dns.com/dns-query'
     )
 
+    if ($DohEndpoint -notmatch '^https://') { throw "DNS-over-HTTPS endpoint must use https: $DohEndpoint" }
     if ($null -eq $script:UseNativeDns) { $script:UseNativeDns = [bool](Get-Command Resolve-DnsName -ErrorAction SilentlyContinue) }
 
     if ($script:UseNativeDns) {

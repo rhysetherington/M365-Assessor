@@ -16,7 +16,8 @@ function Convert-M365Report {
         [string]$ClientName,
         [string]$PreparedBy,
         [ValidatePattern('^#[0-9a-fA-F]{6}$')][string]$BrandColor,
-        [string]$LogoPath
+        [string]$LogoPath,
+        [switch]$HideTenantId
     )
 
     if (-not (Test-Path -LiteralPath $Path)) { throw "Findings file not found: $Path" }
@@ -35,7 +36,7 @@ function Convert-M365Report {
 
     $folder = if ($OutputPath) { $OutputPath } else { Split-Path -Parent (Resolve-Path -LiteralPath $Path) }
     $null = New-Item -ItemType Directory -Path $folder -Force
-    $branding = @{ ClientName = $ClientName; PreparedBy = $PreparedBy; BrandColor = $BrandColor; LogoPath = $LogoPath }
+    $branding = @{ ClientName = $ClientName; PreparedBy = $PreparedBy; BrandColor = $BrandColor; LogoPath = $LogoPath; HideTenantId = [bool]$HideTenantId }
     if ('HTML' -in $Format) {
         $p = Join-Path $folder 'M365_Security_Gap_Assessment.html'
         New-AssessmentHtml -Assessment $assessment -Branding $branding | Set-Content -Path $p -Encoding utf8
