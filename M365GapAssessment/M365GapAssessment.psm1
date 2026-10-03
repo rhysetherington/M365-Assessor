@@ -11,7 +11,7 @@ $script:RequiredScopes = @(
     'RoleManagement.Read.Directory', 'Application.Read.All', 'Group.Read.All',
     'DeviceManagementManagedDevices.Read.All',
     'RoleManagementPolicy.Read.Directory', 'IdentityRiskyUser.Read.All', 'AccessReview.Read.All',
-    'EntitlementManagement.Read.All', 'Agreement.Read.All'
+    'EntitlementManagement.Read.All', 'Agreement.Read.All', 'SharePointTenantSettings.Read.All'
 )
 
 foreach ($file in @(Get-ChildItem -Path (Join-Path $PSScriptRoot 'Private') -Filter '*.ps1' -ErrorAction Stop)) {

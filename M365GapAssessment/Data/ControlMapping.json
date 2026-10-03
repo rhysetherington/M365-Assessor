@@ -239,6 +239,47 @@
       ]
     },
     {
+      "id": "SPO-001", "domain": "SharePoint", "name": "SharePoint external sharing allows anonymous 'Anyone' links", "severity": "High",
+      "scf": "DCH-13", "nistCsf": "PR.DS-01", "cis": ["7.2.3", "7.2.6"],
+      "remediation": [
+        "SharePoint admin center > Policies > Sharing.",
+        "Set the External sharing slider for SharePoint and OneDrive to 'New and existing guests' or more restrictive.",
+        "Use 'Anyone' links only on specific sites that need them, with expiry and view-only permission."
+      ]
+    },
+    {
+      "id": "SPO-002", "domain": "SharePoint", "name": "Guests can reshare SharePoint and OneDrive items they do not own", "severity": "Medium",
+      "scf": "DCH-13", "nistCsf": "PR.AA-05", "cis": ["7.2.5"],
+      "remediation": [
+        "SharePoint admin center > Policies > Sharing > More external sharing settings.",
+        "Tick 'Allow guests to share items they don't own' = Off (clear the box)."
+      ]
+    },
+    {
+      "id": "SPO-003", "domain": "SharePoint", "name": "External sharing is not limited to approved domains", "severity": "Medium",
+      "scf": "DCH-13", "nistCsf": "PR.IR-01", "cis": ["7.2.6"],
+      "remediation": [
+        "SharePoint admin center > Policies > Sharing > More external sharing settings.",
+        "Tick 'Limit external sharing by domain' and add the allowed (or blocked) domains."
+      ]
+    },
+    {
+      "id": "SPO-004", "domain": "SharePoint", "name": "Legacy authentication protocols enabled for SharePoint", "severity": "High",
+      "scf": "IAC-02", "nistCsf": "PR.AA-03", "cis": ["7.2.1"],
+      "remediation": [
+        "SharePoint admin center > Policies > Access control > Apps that don't use modern authentication = Block access.",
+        "Or: Set-SPOTenant -LegacyAuthProtocolsEnabled $false."
+      ]
+    },
+    {
+      "id": "SPO-005", "domain": "SharePoint", "name": "OneDrive sync allowed from unmanaged devices", "severity": "Medium",
+      "scf": "END-01", "nistCsf": "PR.PS-01",
+      "remediation": [
+        "SharePoint admin center > Settings > OneDrive - Sync > 'Allow syncing only on computers joined to specific domains'.",
+        "Add the Active Directory domain GUIDs, or require compliant devices with Conditional Access."
+      ]
+    },
+    {
       "id": "ENT-USR-005", "domain": "Entra ID", "name": "Excessive number of Global Administrators", "severity": "Medium",
       "scf": "IAC-21", "nistCsf": "PR.AA-05", "cis": ["1.1.3"],
       "remediation": [
