@@ -38,6 +38,7 @@ function Get-SecureScoreGaps {
             if ($achieved -ge $max -or $status -match '^(implemented|completed)$') { continue }
             [pscustomobject]@{
                 Category = $cs.controlCategory
+                Workload = if ($profile.service) { [string]$profile.service } elseif ($cs.controlCategory) { [string]$cs.controlCategory } else { 'Other' }
                 Title    = if ($profile.title) { $profile.title } else { $cs.controlName }
                 Achieved = $achieved
                 Max      = $max
@@ -49,7 +50,17 @@ function Get-SecureScoreGaps {
         $fmt = { "[$($_.Category)] $($_.Title) - $($_.Achieved)/$($_.Max) pts ($($_.Status))" }
 
         New-Finding -Id 'SSC-002' -Status $(if ($gaps.Count) { 'Gap' } else { 'Pass' }) -AffectedObjects @($gaps | ForEach-Object $fmt) `
-            -Detail "$($gaps.Count) control(s) below maximum score; sorted by points available."
+            -Detail "$($gaps.Count) control(s) below maximum score; sorted by points available." `
+            -Extra @{
+            Workloads = @($gaps | Group-Object Workload | ForEach-Object {
+                    [pscustomobject][ordered]@{
+                        Workload        = $_.Name
+                        Controls        = $_.Count
+                        PointsAvailable = [math]::Round(($_.Group | Measure-Object Gap -Sum).Sum, 2)
+                        Top             = @($_.Group | Select-Object -First 3 | ForEach-Object { "$($_.Title) ($($_.Gap) pts)" })
+                    }
+                } | Sort-Object PointsAvailable -Descending)
+        }
 
         $high = @($gaps | Where-Object { $_.Gap -ge $HighValuePoints })
         New-Finding -Id 'SSC-003' -Status $(if ($high.Count) { 'Gap' } else { 'Pass' }) -AffectedObjects @($high | ForEach-Object $fmt) `

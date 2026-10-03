@@ -104,7 +104,8 @@ function New-Finding {
         [ValidateSet('Gap', 'Pass', 'NotAssessed', 'Accepted')][string]$Status = 'Gap',
         [object[]]$AffectedObjects = @(),
         [string]$Detail = '',
-        [ValidateSet('Critical', 'High', 'Medium', 'Low', 'Informational')][string]$Severity
+        [ValidateSet('Critical', 'High', 'Medium', 'Low', 'Informational')][string]$Severity,
+        [hashtable]$Extra
     )
 
     $map = $script:ControlMapping[$Id]
@@ -116,7 +117,7 @@ function New-Finding {
         $Detail = "Tenant has no $($script:LicenseDisplay[$map.license]) licence. $Detail".Trim()
     }
 
-    [pscustomobject][ordered]@{
+    $finding = [pscustomobject][ordered]@{
         FindingId       = $Id
         Name            = $map.name
         Domain          = $map.domain
@@ -129,6 +130,8 @@ function New-Finding {
         NistCsf         = $map.nistCsf
         Remediation     = @($map.remediation)
     }
+    foreach ($k in $Extra.Keys) { $finding | Add-Member -NotePropertyName $k -NotePropertyValue $Extra[$k] }
+    $finding
 }
 
 function Invoke-Collector {

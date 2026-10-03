@@ -81,6 +81,11 @@ function New-AssessmentMarkdown {
                 foreach ($a in ($g.AffectedObjects | Select-Object -First 25)) { $md.Add("  - $(ConvertTo-MdCell $a)") }
                 if ($g.AffectedCount -gt 25) { $md.Add("  - ...and $($g.AffectedCount - 25) more (see AssessmentFindings.json)") }
             }
+            if ($g.Workloads) {
+                $md.Add('')
+                $md.Add("| Workload | Controls | Points available | Biggest wins |`n|---|--:|--:|---|")
+                foreach ($w in $g.Workloads) { $md.Add("| $(ConvertTo-MdCell $w.Workload) | $($w.Controls) | $($w.PointsAvailable) | $(ConvertTo-MdCell (@($w.Top) -join '; ')) |") }
+            }
             $md.Add('')
             $md.Add('**Remediation (admin portal):**')
             $md.Add('')
@@ -179,6 +184,11 @@ code{background:#eef1f5;padding:1px 5px;border-radius:4px}@media print{body{back
                 foreach ($a in ($g.AffectedObjects | Select-Object -First 25)) { [void]$sb.Append("<li>$(& $enc $a)</li>") }
                 if ($g.AffectedCount -gt 25) { [void]$sb.Append("<li>&hellip;and $($g.AffectedCount - 25) more (see JSON)</li>") }
                 [void]$sb.Append('</ul></details>')
+            }
+            if ($g.Workloads) {
+                [void]$sb.Append('<table><tr><th>Workload</th><th>Controls</th><th>Points available</th><th>Biggest wins</th></tr>')
+                foreach ($w in $g.Workloads) { [void]$sb.Append("<tr><td>$(& $enc $w.Workload)</td><td>$($w.Controls)</td><td>$($w.PointsAvailable)</td><td>$(& $enc (@($w.Top) -join '; '))</td></tr>") }
+                [void]$sb.Append('</table>')
             }
             [void]$sb.Append('<b>Remediation</b><ol>')
             foreach ($step in $g.Remediation) { [void]$sb.Append("<li>$(& $enc $step)</li>") }
