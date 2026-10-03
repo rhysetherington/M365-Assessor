@@ -23,6 +23,10 @@ function Invoke-M365SecurityReview {
         [int]$SecretWarningDays = 30,
         [int]$TargetScorePercent = 70,
         [string]$AcceptedRiskPath,
+        [string]$ClientName,
+        [string]$PreparedBy,
+        [ValidatePattern('^#[0-9a-fA-F]{6}$')][string]$BrandColor,
+        [string]$LogoPath,
         [switch]$SkipRoleCheck,
         [switch]$NoExport
     )
@@ -105,11 +109,12 @@ function Invoke-M365SecurityReview {
             ExportedFiles = @()
         }
 
+        $branding = @{ ClientName = $ClientName; PreparedBy = $PreparedBy; BrandColor = $BrandColor; LogoPath = $LogoPath }
         # --- Export --------------------------------------------------------------------------
         if (-not $NoExport) {
             Write-Progress -Id 1 -Activity "M365 Gap Assessment [$($context.TenantId)]" -Status 'Exporting reports' -PercentComplete ($base + 95 / $tenants.Count)
             $folder = Join-Path $ExportPath ("{0}_{1}" -f $context.TenantId, (Get-Date -Format 'yyyyMMdd-HHmm'))
-            $assessment.ExportedFiles = @(Export-M365GapReport -Assessment $assessment -ExportPath $folder -Format $Format)
+            $assessment.ExportedFiles = @(Export-M365GapReport -Assessment $assessment -ExportPath $folder -Format $Format -Branding $branding)
         }
         $assessment
     }

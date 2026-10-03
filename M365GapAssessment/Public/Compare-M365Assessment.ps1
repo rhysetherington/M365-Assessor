@@ -4,6 +4,8 @@ function Compare-M365Assessment {
         Compares two AssessmentFindings.json files (or assessment objects) and classifies each finding as New, Resolved, Changed or Unchanged.
     .DESCRIPTION
         Findings are keyed by FindingId. Only Gap status counts as "open": Pass, Accepted and NotAssessed are treated as not open.
+          Accepted  - open in the baseline, now covered by an accepted-risk entry (not a fix)
+          Reopened  - accepted in the baseline, open again now (acceptance expired or no longer covers it)
           New       - open now, not open (or absent) in the baseline
           Resolved  - open in the baseline, not open now
           Changed   - open in both, but severity or the set of affected objects differs (AddedObjects / RemovedObjects listed)
@@ -35,7 +37,9 @@ function Compare-M365Assessment {
         $b = $before[$id]; $a = $after[$id]
         $change = $null; $added = @(); $removed = @()
 
-        if ((Test-Open $a) -and -not (Test-Open $b)) { $change = 'New'; $added = @($a.AffectedObjects) }
+        if ($a.Status -eq 'Accepted' -and (Test-Open $b)) { $change = 'Accepted'; $removed = @($b.AffectedObjects) }
+        elseif ($b.Status -eq 'Accepted' -and (Test-Open $a)) { $change = 'Reopened'; $added = @($a.AffectedObjects) }
+        elseif ((Test-Open $a) -and -not (Test-Open $b)) { $change = 'New'; $added = @($a.AffectedObjects) }
         elseif ((Test-Open $b) -and -not (Test-Open $a)) { $change = 'Resolved'; $removed = @($b.AffectedObjects) }
         elseif ((Test-Open $a) -and (Test-Open $b)) {
             $bKeys = @($b.AffectedObjects | ForEach-Object { Get-ObjectKey $_ })

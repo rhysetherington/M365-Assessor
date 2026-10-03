@@ -122,7 +122,7 @@ function New-AssessmentMarkdown {
 }
 
 function New-AssessmentHtml {
-    param($Assessment)
+    param($Assessment, [hashtable]$Branding = @{})
     $enc = { param($t) [System.Net.WebUtility]::HtmlEncode([string]$t) }
     $f = @($Assessment.Findings)
     $gaps = @($f | Where-Object Status -eq 'Gap')
@@ -130,6 +130,17 @@ function New-AssessmentHtml {
     $sum = $Assessment.Summary
     $sb = [System.Text.StringBuilder]::new()
     $add = { param($t) [void]$sb.Append($t) }
+
+    $assessedAt = [datetime]$Assessment.AssessedAt
+    $client = if ($Branding.ClientName) { $Branding.ClientName } else { $Assessment.TenantName }
+    $accent = if ($Branding.BrandColor -match '^#[0-9a-fA-F]{6}$') { ":root{--hero2:$($Branding.BrandColor)}" } else { '' }
+    $logo = ''
+    if ($Branding.LogoPath) {
+        $ext = [IO.Path]::GetExtension($Branding.LogoPath).TrimStart('.').ToLowerInvariant()
+        $mime = switch ($ext) { 'svg' { 'image/svg+xml' } 'jpg' { 'image/jpeg' } 'jpeg' { 'image/jpeg' } 'png' { 'image/png' } default { $null } }
+        if ($mime) { $logo = "<img class=`"logo`" alt=`"`" src=`"data:$mime;base64,$([Convert]::ToBase64String([IO.File]::ReadAllBytes($Branding.LogoPath)))`">" }
+    }
+    $preparedBy = if ($Branding.PreparedBy) { " by <b>$(& $enc $Branding.PreparedBy)</b>" } else { '' }
 
     $score = $Assessment.Score
     $scoreText = if ($null -eq $score) { 'n/a' } else { "$([math]::Round($score))%" }
@@ -181,6 +192,8 @@ details.sub{border-radius:8px;margin:8px 0;background:var(--soft);border:0}detai
 ul,ol{margin:6px 0 6px 20px;padding:0}li{margin:3px 0}
 table{width:100%;border-collapse:collapse;font-size:13.5px}th,td{padding:7px 10px;text-align:left;border-bottom:1px solid var(--line);vertical-align:top}th{color:var(--mute);font-weight:600}
 .s-Gap{color:var(--critical);font-weight:600}.s-Pass{color:var(--pass);font-weight:600}.s-Not{color:var(--mute);font-weight:600}
+@media (prefers-color-scheme:dark){.logo{background:#fff}}
+.logo{height:40px;width:auto;background:#fff;border-radius:8px;padding:6px 10px;margin-bottom:16px;display:block}
 footer{color:var(--mute);font-size:12.5px;margin-top:36px;padding-top:16px;border-top:1px solid var(--line)}
 @media (max-width:720px){.glance{grid-template-columns:1fr}.row{grid-template-columns:1fr}.row small{text-align:left}h1{font-size:26px}}
 @media print{body{background:#fff}.hero{-webkit-print-color-adjust:exact;print-color-adjust:exact}.card,.prio,details{break-inside:avoid;box-shadow:none}}
@@ -188,11 +201,11 @@ footer{color:var(--mute);font-size:12.5px;margin-top:36px;padding-top:16px;borde
 
     & $add @"
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>M365 Security Gap Assessment - $(& $enc $Assessment.TenantName)</title>
-<style>$css</style></head><body>
-<header class="hero"><div class="wrap"><div class="eyebrow">Security assessment</div>
+<title>M365 Security Gap Assessment - $(& $enc $client)</title>
+<style>$css$accent</style></head><body>
+<header class="hero"><div class="wrap">$logo<div class="eyebrow">Security assessment</div>
 <h1>Microsoft 365 Security Gap Assessment</h1>
-<p>Prepared for <b>$(& $enc $Assessment.TenantName)</b> &middot; $($Assessment.AssessedAt.ToString('d MMMM yyyy'))</p></div></header>
+<p>Prepared for <b>$(& $enc $client)</b>$preparedBy &middot; $($assessedAt.ToString('d MMMM yyyy'))</p></div></header>
 <main class="wrap">
 <section><div class="card glance">
 <div class="ring" style="--c:$scoreVar;--deg:$scoreDeg"><div><b style="color:$scoreVar">$scoreText</b><span>$scoreWord</span></div></div>
@@ -299,7 +312,7 @@ $(if ($sum.NotAssessed) { "<div class=`"stat`"><b>$($sum.NotAssessed)</b><span>n
     & $add '</section>'
 
     & $add @"
-<footer>Tenant <code>$(& $enc $Assessment.TenantId)</code> &middot; assessed $($Assessment.AssessedAt.ToString('yyyy-MM-dd HH:mm')) UTC &middot; M365GapAssessment $(& $enc $Assessment.ModuleVersion). Read-only assessment: no changes were made to the tenant. The score weights each check by severity (Critical 10, High 5, Medium 3, Low 1).</footer>
+<footer>Tenant <code>$(& $enc $Assessment.TenantId)</code> &middot; assessed $($assessedAt.ToString('yyyy-MM-dd HH:mm')) UTC &middot; M365GapAssessment $(& $enc $Assessment.ModuleVersion). Read-only assessment: no changes were made to the tenant. The score weights each check by severity (Critical 10, High 5, Medium 3, Low 1).</footer>
 </main>
 <script>window.addEventListener('beforeprint',function(){document.querySelectorAll('details').forEach(function(d){d.open=true})})</script>
 </body></html>
@@ -316,7 +329,8 @@ function Export-M365GapReport {
     param(
         [Parameter(Mandatory, ValueFromPipeline)]$Assessment,
         [Parameter(Mandatory)][string]$ExportPath,
-        [ValidateSet('JSON', 'HTML', 'Markdown')][string[]]$Format = @('JSON', 'Markdown')
+        [ValidateSet('JSON', 'HTML', 'Markdown')][string[]]$Format = @('JSON', 'Markdown'),
+        [hashtable]$Branding = @{}
     )
 
     process {
@@ -335,7 +349,7 @@ function Export-M365GapReport {
             }
             if ('HTML' -in $Format) {
                 $p = Join-Path $ExportPath 'M365_Security_Gap_Assessment.html'
-                New-AssessmentHtml -Assessment $Assessment | Set-Content -Path $p -Encoding utf8
+                New-AssessmentHtml -Assessment $Assessment -Branding $Branding | Set-Content -Path $p -Encoding utf8
                 $written.Add($p)
             }
             $written.ToArray()

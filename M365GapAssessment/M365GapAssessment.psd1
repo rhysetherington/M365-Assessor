@@ -10,7 +10,7 @@
     # Microsoft.Graph.Authentication provides Connect-MgGraph / Invoke-MgGraphRequest and ships inside both
     # the Microsoft.Graph and Microsoft.Graph.Beta meta-modules; /beta endpoints are reached through it.
     RequiredModules      = @(@{ ModuleName = 'Microsoft.Graph.Authentication'; ModuleVersion = '2.0.0' })
-    FunctionsToExport    = @('Connect-M365Assessment', 'Invoke-M365SecurityReview', 'Export-M365GapReport', 'Compare-M365Assessment')
+    FunctionsToExport    = @('Connect-M365Assessment', 'Invoke-M365SecurityReview', 'Export-M365GapReport', 'Compare-M365Assessment', 'Convert-M365Report')
     CmdletsToExport      = @()
     VariablesToExport    = @()
     AliasesToExport      = @()

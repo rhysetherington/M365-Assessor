@@ -27,4 +27,4 @@ foreach ($entry in (Get-Content -Raw -Path $mappingPath | ConvertFrom-Json).cont
     $script:ControlMapping[$entry.id] = $entry
 }
 
-Export-ModuleMember -Function 'Connect-M365Assessment', 'Invoke-M365SecurityReview', 'Export-M365GapReport', 'Compare-M365Assessment'
+Export-ModuleMember -Function 'Connect-M365Assessment', 'Invoke-M365SecurityReview', 'Export-M365GapReport', 'Compare-M365Assessment', 'Convert-M365Report'

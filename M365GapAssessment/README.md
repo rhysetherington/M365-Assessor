@@ -136,4 +136,15 @@ with a list, every affected object must be covered, so a new object re-opens the
 Compare-M365Assessment -Baseline .\Assessments\<old>\AssessmentFindings.json -Current .\Assessments\<new>\AssessmentFindings.json
 ```
 
-Classifies each finding as New, Resolved, Changed (severity or affected objects differ) or Unchanged; only `Gap` counts as open.
+Classifies each finding as New, Resolved, Changed (severity or affected objects differ), Unchanged, **Accepted** (now covered by an accepted-risk entry, not a fix) or **Reopened** (acceptance no longer applies); only `Gap` counts as open.
+
+## Client branding and re-rendering
+
+```powershell
+Invoke-M365SecurityReview -TenantId <guid> -Format HTML -ClientName 'Contoso Ltd' -PreparedBy 'Your MSP' -BrandColor '#0f766e' -LogoPath .\logo.png
+
+# Re-render any saved run with the current report design (no sign-in needed; JSON is never modified)
+Convert-M365Report -Path .\Assessments\<run>\AssessmentFindings.json -ClientName 'Contoso Ltd' -Format HTML,Markdown
+```
+
+`-LogoPath` accepts PNG, JPG or SVG and is embedded in the HTML, so the report stays a single file.
