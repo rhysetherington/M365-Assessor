@@ -21,10 +21,12 @@ function Get-TeamsGaps {
         Import-Module MicrosoftTeams -ErrorAction Stop
         $conn = @{ ErrorAction = 'Stop' }
         if ($TenantId) { $conn.TenantId = $TenantId }
+        # The Windows broker (WAM) is not available on macOS/Linux and fails with a kernel32.dll load error.
+        if (-not $IsWindows -and (Get-Command Connect-MicrosoftTeams).Parameters.ContainsKey('DisableWAM')) { $conn.DisableWAM = $true }
         $null = Connect-MicrosoftTeams @conn
     }
     catch {
-        foreach ($id in $ids) { New-Finding -Id $id -Status NotAssessed -Detail "Could not connect to Microsoft Teams: $($_.Exception.Message)" }
+        foreach ($id in $ids) { New-Finding -Id $id -Status NotAssessed -Detail "Could not connect to Microsoft Teams: $((($_.Exception.Message -split '\r?\n')[0]))" }
         return
     }
 

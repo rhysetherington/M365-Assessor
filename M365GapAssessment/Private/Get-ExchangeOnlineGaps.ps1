@@ -24,7 +24,7 @@ function Get-ExchangeOnlineGaps {
         Connect-ExchangeOnline @conn
     }
     catch {
-        foreach ($id in $ids) { New-Finding -Id $id -Status NotAssessed -Detail "Could not connect to Exchange Online: $($_.Exception.Message)" }
+        foreach ($id in $ids) { New-Finding -Id $id -Status NotAssessed -Detail "Could not connect to Exchange Online: $((($_.Exception.Message -split '\r?\n')[0]))" }
         return
     }
 
