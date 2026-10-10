@@ -14,6 +14,10 @@ function Convert-M365Report {
         [string]$OutputPath,
         [ValidateSet('HTML', 'Markdown')][string[]]$Format = @('HTML'),
         [string]$ClientName,
+        [string]$AssessmentName,
+        [string]$AssessorName,
+        [string]$AssessmentDate,
+        [string]$Reference,
         [string]$PreparedBy,
         [ValidatePattern('^#[0-9a-fA-F]{6}$')][string]$BrandColor,
         [string]$LogoPath,
@@ -34,16 +38,30 @@ function Convert-M365Report {
         $assessment.Summary | Add-Member -NotePropertyName Accepted -NotePropertyValue @($assessment.Findings | Where-Object Status -eq 'Accepted').Count
     }
 
+    # Optional overrides of the saved audit details (creates them for runs saved before metadata existed).
+    if (-not $assessment.PSObject.Properties['Metadata'] -or -not $assessment.Metadata) {
+        $assessment | Add-Member -NotePropertyName Metadata -NotePropertyValue ([pscustomobject]@{ ClientName = $null; AssessmentName = $null; AssessorName = $null; PreparedBy = $null; AssessmentDate = $null; Reference = $null }) -Force
+    }
+    foreach ($pair in @{ ClientName = $ClientName; AssessmentName = $AssessmentName; AssessorName = $AssessorName; AssessmentDate = $AssessmentDate; Reference = $Reference }.GetEnumerator()) {
+        if ($pair.Value) { $assessment.Metadata | Add-Member -NotePropertyName $pair.Key -NotePropertyValue $pair.Value -Force }
+    }
+    if ($AssessmentDate) {
+        $parsed = [datetime]::MinValue
+        if (-not [datetime]::TryParse($AssessmentDate, [ref]$parsed)) { throw "Assessment date '$AssessmentDate' is not a valid date (use yyyy-MM-dd)." }
+        $assessment.Metadata.AssessmentDate = $parsed.ToString('yyyy-MM-dd')
+    }
+    $base = Get-AssessmentBaseName -Assessment $assessment
+
     $folder = if ($OutputPath) { $OutputPath } else { Split-Path -Parent (Resolve-Path -LiteralPath $Path) }
     $null = New-Item -ItemType Directory -Path $folder -Force
-    $branding = @{ ClientName = $ClientName; PreparedBy = $PreparedBy; BrandColor = $BrandColor; LogoPath = $LogoPath; HideTenantId = [bool]$HideTenantId }
+    $branding = @{ PreparedBy = $PreparedBy; BrandColor = $BrandColor; LogoPath = $LogoPath; HideTenantId = [bool]$HideTenantId }
     if ('HTML' -in $Format) {
-        $p = Join-Path $folder 'M365_Security_Gap_Assessment.html'
+        $p = Join-Path $folder $(if ($base) { "$base-Assessment.html" } else { 'M365_Security_Gap_Assessment.html' })
         New-AssessmentHtml -Assessment $assessment -Branding $branding | Set-Content -Path $p -Encoding utf8
         $p
     }
     if ('Markdown' -in $Format) {
-        $p = Join-Path $folder 'M365_Security_Gap_Assessment.md'
+        $p = Join-Path $folder $(if ($base) { "$base-Assessment.md" } else { 'M365_Security_Gap_Assessment.md' })
         New-AssessmentMarkdown -Assessment $assessment | Set-Content -Path $p -Encoding utf8
         $p
     }

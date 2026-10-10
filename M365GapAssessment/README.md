@@ -135,7 +135,7 @@ Invoke-M365SecurityReview -TenantId <guid> -AcceptedRiskPath ./client1-accepted.
 with a list, every affected object must be covered, so a new object re-opens the gap. Expired entries stop applying.
 
 ```powershell
-Compare-M365Assessment -Baseline .\Assessments\<old>\AssessmentFindings.json -Current .\Assessments\<new>\AssessmentFindings.json
+Compare-M365Assessment -Baseline .\Assessments\<old>\<old>-Findings.json -Current .\Assessments\<new>\<new>-Findings.json
 ```
 
 Classifies each finding as New, Resolved, Changed (severity or affected objects differ), Unchanged, **Accepted** (now covered by an accepted-risk entry, not a fix) or **Reopened** (acceptance no longer applies); only `Gap` counts as open.
@@ -168,3 +168,20 @@ Convert-M365Report -Path .\Assessments\<run>\AssessmentFindings.json -ClientName
 - **DNS lookups.** On macOS/Linux, SPF/DKIM/DMARC lookups use DNS-over-HTTPS (default Cloudflare), which sends the client's domain
   names to that provider. Use `-DohEndpoint` to point at your own resolver (https only).
 - **Repository hygiene.** `.gitignore` excludes assessments, certificates, keys, logs and accepted-risk files (client-specific).
+
+## Assessment details and file naming
+
+Each run records simple audit artefacts. After sign-in the tool asks (press Enter to accept the default in brackets):
+
+| Prompt | Parameter | Default |
+|---|---|---|
+| Client name | `-ClientName` | first label of the tenant's primary domain (`contoso.com` -> `contoso`), else the tenant name |
+| Assessment name | `-AssessmentName` | Microsoft 365 Security Gap Assessment |
+| Assessor (who is performing it) | `-AssessorName` | the signed-in account |
+| Assessment date | `-AssessmentDate` | today (`yyyy-MM-dd`) |
+| Engagement / reference (optional) | `-Reference` | blank |
+
+Use `-NoPrompt` (or run non-interactively) to accept defaults silently. Answers are stored in the findings JSON under `Metadata`,
+shown in the report header, and drive the names: folder `ClientName-YYYY-MM-DD/` containing `ClientName-YYYY-MM-DD-Findings.json`,
+`...-Assessment.html` and `...-Assessment.md`. Names are sanitised to letters, digits and dashes, so input cannot add path separators.
+A second run for the same client and date gets an `-HHmm` suffix instead of overwriting. `Convert-M365Report` can override any of these.

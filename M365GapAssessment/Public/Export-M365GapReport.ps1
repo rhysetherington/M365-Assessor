@@ -30,9 +30,14 @@ function New-AssessmentMarkdown {
     $sev = $Assessment.Summary.GapsBySeverity
     $md = [System.Collections.Generic.List[string]]::new()
 
-    $md.Add("# Microsoft 365 Security Gap Assessment")
+    $m = $Assessment.Metadata
+    $md.Add("# $(ConvertTo-MdCell $(if ($m.AssessmentName) { $m.AssessmentName } else { 'Microsoft 365 Security Gap Assessment' }))")
     $md.Add('')
     $md.Add("| | |`n|---|---|")
+    if ($m.ClientName) { $md.Add("| **Client** | $(ConvertTo-MdCell $m.ClientName) |") }
+    if ($m.AssessmentDate) { $md.Add("| **Assessment date** | $(ConvertTo-MdCell $m.AssessmentDate) |") }
+    if ($m.AssessorName) { $md.Add("| **Assessor** | $(ConvertTo-MdCell $m.AssessorName)$(if ($m.PreparedBy) { ', ' + (ConvertTo-MdCell $m.PreparedBy) }) |") }
+    if ($m.Reference) { $md.Add("| **Reference** | $(ConvertTo-MdCell $m.Reference) |") }
     $md.Add("| **Tenant** | $(ConvertTo-MdCell "$($Assessment.TenantName) ($($Assessment.TenantId))") |")
     $md.Add("| **Assessed** | $($Assessment.AssessedAt.ToString('yyyy-MM-dd HH:mm')) UTC by $(ConvertTo-MdCell $Assessment.AssessedBy) |")
     $md.Add("| **Tool version** | M365GapAssessment $($Assessment.ModuleVersion) (read-only) |")
@@ -133,7 +138,12 @@ function New-AssessmentHtml {
     $add = { param($t) [void]$sb.Append($t) }
 
     $assessedAt = [datetime]$Assessment.AssessedAt
-    $client = if ($Branding.ClientName) { $Branding.ClientName } else { $Assessment.TenantName }
+    $meta = $Assessment.Metadata
+    $client = if ($Branding.ClientName) { $Branding.ClientName } elseif ($meta.ClientName) { $meta.ClientName } else { $Assessment.TenantName }
+    $title = if ($meta.AssessmentName) { $meta.AssessmentName } else { 'Microsoft 365 Security Gap Assessment' }
+    $when = if ($meta.AssessmentDate) { ([datetime]$meta.AssessmentDate).ToString('d MMMM yyyy') } else { $assessedAt.ToString('d MMMM yyyy') }
+    $assessor = if ($meta.AssessorName) { " &middot; Assessor: <b>$(& $enc $meta.AssessorName)</b>" } else { '' }
+    $ref = if ($meta.Reference) { " &middot; Ref: $(& $enc $meta.Reference)" } else { '' }
     $accent = if ($Branding.BrandColor -match '^#[0-9a-fA-F]{6}$') { ":root{--hero2:$($Branding.BrandColor)}" } else { '' }
     $logo = ''
     if ($Branding.LogoPath) {
@@ -141,7 +151,8 @@ function New-AssessmentHtml {
         $mime = switch ($ext) { 'svg' { 'image/svg+xml' } 'jpg' { 'image/jpeg' } 'jpeg' { 'image/jpeg' } 'png' { 'image/png' } default { $null } }
         if ($mime) { $logo = "<img class=`"logo`" alt=`"`" src=`"data:$mime;base64,$([Convert]::ToBase64String([IO.File]::ReadAllBytes($Branding.LogoPath)))`">" }
     }
-    $preparedBy = if ($Branding.PreparedBy) { " by <b>$(& $enc $Branding.PreparedBy)</b>" } else { '' }
+    $byName = if ($Branding.PreparedBy) { $Branding.PreparedBy } else { $meta.PreparedBy }
+    $preparedBy = if ($byName) { " by <b>$(& $enc $byName)</b>" } else { '' }
 
     $score = $Assessment.Score
     $scoreText = if ($null -eq $score) { 'n/a' } else { "$([math]::Round($score))%" }
@@ -202,11 +213,11 @@ footer{color:var(--mute);font-size:12.5px;margin-top:36px;padding-top:16px;borde
 
     & $add @"
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>M365 Security Gap Assessment - $(& $enc $client)</title>
+<title>$(& $enc $title) - $(& $enc $client)</title>
 <style>$css$accent</style></head><body>
 <header class="hero"><div class="wrap">$logo<div class="eyebrow">Security assessment</div>
-<h1>Microsoft 365 Security Gap Assessment</h1>
-<p>Prepared for <b>$(& $enc $client)</b>$preparedBy &middot; $($assessedAt.ToString('d MMMM yyyy'))</p></div></header>
+<h1>$(& $enc $title)</h1>
+<p>Prepared for <b>$(& $enc $client)</b>$preparedBy &middot; $when$assessor$ref</p></div></header>
 <main class="wrap">
 <section><div class="card glance">
 <div class="ring" style="--c:$scoreVar;--deg:$scoreDeg"><div><b style="color:$scoreVar">$scoreText</b><span>$scoreWord</span></div></div>
@@ -339,17 +350,18 @@ function Export-M365GapReport {
             $null = New-Item -ItemType Directory -Path $ExportPath -Force -ErrorAction Stop
             $written = [System.Collections.Generic.List[string]]::new()
 
-            $jsonPath = Join-Path $ExportPath 'AssessmentFindings.json'
+            $base = Get-AssessmentBaseName -Assessment $Assessment
+            $jsonPath = Join-Path $ExportPath $(if ($base) { "$base-Findings.json" } else { 'AssessmentFindings.json' })
             $Assessment | Select-Object * -ExcludeProperty ExportedFiles | ConvertTo-Json -Depth 8 | Set-Content -Path $jsonPath -Encoding utf8
             $written.Add($jsonPath)
 
             if ('Markdown' -in $Format) {
-                $p = Join-Path $ExportPath 'M365_Security_Gap_Assessment.md'
+                $p = Join-Path $ExportPath $(if ($base) { "$base-Assessment.md" } else { 'M365_Security_Gap_Assessment.md' })
                 New-AssessmentMarkdown -Assessment $Assessment | Set-Content -Path $p -Encoding utf8
                 $written.Add($p)
             }
             if ('HTML' -in $Format) {
-                $p = Join-Path $ExportPath 'M365_Security_Gap_Assessment.html'
+                $p = Join-Path $ExportPath $(if ($base) { "$base-Assessment.html" } else { 'M365_Security_Gap_Assessment.html' })
                 New-AssessmentHtml -Assessment $Assessment -Branding $Branding | Set-Content -Path $p -Encoding utf8
                 $written.Add($p)
             }

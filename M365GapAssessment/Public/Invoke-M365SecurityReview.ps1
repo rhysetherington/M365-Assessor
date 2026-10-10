@@ -25,6 +25,11 @@ function Invoke-M365SecurityReview {
         [int]$TargetScorePercent = 70,
         [string]$AcceptedRiskPath,
         [string]$ClientName,
+        [string]$AssessmentName,
+        [string]$AssessorName,
+        [string]$AssessmentDate,
+        [string]$Reference,
+        [switch]$NoPrompt,
         [string]$PreparedBy,
         [ValidatePattern('^#[0-9a-fA-F]{6}$')][string]$BrandColor,
         [string]$LogoPath,
@@ -50,6 +55,23 @@ function Invoke-M365SecurityReview {
         if ($CertificateThumbprint) { $connect.CertificateThumbprint = $CertificateThumbprint; $connect.ClientId = $ClientId }
         if ($UseDeviceAuthentication -and -not $Credential -and -not $CertificateThumbprint) { $connect.UseDeviceAuthentication = $true }
         $context = Connect-M365Assessment @connect
+
+        # --- Assessment details (client, assessor, date): asked before the long collection starts ----------------
+        Write-Progress -Id 1 -Activity "M365 Gap Assessment [$label]" -Completed
+        $tenantName = $null
+        $primaryDomain = $null
+        try {
+            $org = (Invoke-GraphRequestWithRetry -Uri '/v1.0/organization?$select=displayName,verifiedDomains').value[0]
+            $tenantName = $org.displayName
+            $custom = @($org.verifiedDomains | Where-Object { $_.name -notlike '*.onmicrosoft.com' -and $_.name -notlike '*.mail.onmicrosoft.com' })
+            $default = $org.verifiedDomains | Where-Object isDefault | Select-Object -First 1
+            $primaryDomain = if ($default -and $default.name -notlike '*.onmicrosoft.com') { $default.name } elseif ($custom.Count) { $custom[0].name } elseif ($default) { $default.name }
+        }
+        catch { }
+        $metadata = Resolve-AssessmentMetadata -ClientName $ClientName -AssessmentName $AssessmentName -AssessorName $AssessorName `
+            -PreparedBy $PreparedBy -AssessmentDate $AssessmentDate -Reference $Reference -TenantDisplayName $tenantName `
+            -PrimaryDomain $primaryDomain -SignedInAccount $context.Account -NoPrompt:$NoPrompt
+
 
         # --- Collect -------------------------------------------------------------------------
         $findings = [System.Collections.Generic.List[object]]::new()
@@ -84,12 +106,10 @@ function Invoke-M365SecurityReview {
         $ordered = @($findings | Sort-Object @{ Expression = { $script:SeverityOrder[[string]$_.Severity] } }, FindingId)
         $gapList = @($ordered | Where-Object Status -eq 'Gap')
 
-        $tenantName = $null
-        try { $tenantName = (Invoke-GraphRequestWithRetry -Uri '/v1.0/organization?$select=displayName').value[0].displayName } catch { }
-
         $assessment = [pscustomobject][ordered]@{
             TenantId      = $context.TenantId
             TenantName    = $tenantName
+            Metadata      = $metadata
             AssessedAt    = [datetime]::UtcNow
             AssessedBy    = $context.Account
             ModuleVersion = (Get-Module M365GapAssessment).Version.ToString()
@@ -113,11 +133,13 @@ function Invoke-M365SecurityReview {
             ExportedFiles = @()
         }
 
-        $branding = @{ ClientName = $ClientName; PreparedBy = $PreparedBy; BrandColor = $BrandColor; LogoPath = $LogoPath; HideTenantId = [bool]$HideTenantId }
+        $branding = @{ PreparedBy = $PreparedBy; BrandColor = $BrandColor; LogoPath = $LogoPath; HideTenantId = [bool]$HideTenantId }
         # --- Export --------------------------------------------------------------------------
         if (-not $NoExport) {
             Write-Progress -Id 1 -Activity "M365 Gap Assessment [$($context.TenantId)]" -Status 'Exporting reports' -PercentComplete ($base + 95 / $tenants.Count)
-            $folder = Join-Path $ExportPath ("{0}_{1}" -f $context.TenantId, (Get-Date -Format 'yyyyMMdd-HHmm'))
+            $folderName = Get-AssessmentBaseName -Assessment $assessment
+            $folder = Join-Path $ExportPath $folderName
+            if (Test-Path -LiteralPath $folder) { $folder = Join-Path $ExportPath ('{0}-{1}' -f $folderName, (Get-Date -Format 'HHmm')) }
             $assessment.ExportedFiles = @(Export-M365GapReport -Assessment $assessment -ExportPath $folder -Format $Format -Branding $branding)
         }
         $assessment
