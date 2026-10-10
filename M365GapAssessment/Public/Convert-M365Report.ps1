@@ -62,7 +62,7 @@ function Convert-M365Report {
     }
     if ('Markdown' -in $Format) {
         $p = Join-Path $folder $(if ($base) { "$base-Assessment.md" } else { 'M365_Security_Gap_Assessment.md' })
-        New-AssessmentMarkdown -Assessment $assessment | Set-Content -Path $p -Encoding utf8
+        New-AssessmentMarkdown -Assessment $assessment -Branding $branding | Set-Content -Path $p -Encoding utf8
         $p
     }
 }

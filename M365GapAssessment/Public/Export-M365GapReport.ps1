@@ -24,7 +24,7 @@ function Get-ComplianceMatrix {
 }
 
 function New-AssessmentMarkdown {
-    param($Assessment)
+    param($Assessment, [hashtable]$Branding = @{})
     $f = @($Assessment.Findings)
     $gaps = @($f | Where-Object Status -eq 'Gap')
     $sev = $Assessment.Summary.GapsBySeverity
@@ -38,7 +38,9 @@ function New-AssessmentMarkdown {
     if ($m.AssessmentDate) { $md.Add("| **Assessment date** | $(ConvertTo-MdCell $m.AssessmentDate) |") }
     if ($m.AssessorName) { $md.Add("| **Assessor** | $(ConvertTo-MdCell $m.AssessorName)$(if ($m.PreparedBy) { ', ' + (ConvertTo-MdCell $m.PreparedBy) }) |") }
     if ($m.Reference) { $md.Add("| **Reference** | $(ConvertTo-MdCell $m.Reference) |") }
-    $md.Add("| **Tenant** | $(ConvertTo-MdCell "$($Assessment.TenantName) ($($Assessment.TenantId))") |")
+    # -HideTenantId removes the tenant GUID from the report (the display name stays); the JSON export is raw data and keeps it.
+    $tenantText = if ($Branding.HideTenantId) { [string]$Assessment.TenantName } else { "$($Assessment.TenantName) ($($Assessment.TenantId))" }
+    if ($tenantText) { $md.Add("| **Tenant** | $(ConvertTo-MdCell $tenantText) |") }
     $md.Add("| **Assessed** | $($Assessment.AssessedAt.ToString('yyyy-MM-dd HH:mm')) UTC by $(ConvertTo-MdCell $Assessment.AssessedBy) |")
     $md.Add("| **Tool version** | M365GapAssessment $($Assessment.ModuleVersion) (read-only) |")
     $md.Add('')
@@ -357,7 +359,7 @@ function Export-M365GapReport {
 
             if ('Markdown' -in $Format) {
                 $p = Join-Path $ExportPath $(if ($base) { "$base-Assessment.md" } else { 'M365_Security_Gap_Assessment.md' })
-                New-AssessmentMarkdown -Assessment $Assessment | Set-Content -Path $p -Encoding utf8
+                New-AssessmentMarkdown -Assessment $Assessment -Branding $Branding | Set-Content -Path $p -Encoding utf8
                 $written.Add($p)
             }
             if ('HTML' -in $Format) {

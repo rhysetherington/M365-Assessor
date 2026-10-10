@@ -161,8 +161,9 @@ Convert-M365Report -Path .\Assessments\<run>\AssessmentFindings.json -ClientName
 - **Local storage only.** Reports go to `./Assessments` (git-ignored). On macOS/Linux each run folder is created `700` with `600` files;
   on Windows rely on NTFS permissions on the export path. Reports contain tenant IDs, user principal names and security gaps, so treat
   them as confidential client data and delete them per your retention policy.
-- **Sharing.** Use `-HideTenantId` (on `Invoke-M365SecurityReview` or `Convert-M365Report`) for client-facing HTML. Folder names and
-  the JSON/Markdown still include the tenant ID because they are for your records.
+- **Sharing.** Use `-HideTenantId` (on `Invoke-M365SecurityReview` or `Convert-M365Report`) for client-facing reports: it removes the
+  tenant ID from both the HTML and the Markdown (the tenant display name stays). `AssessmentFindings.json` is the raw record and always
+  keeps the tenant ID, so share the HTML/Markdown, not the JSON. Run folders are named `Client-Date`, not by tenant ID.
 - **HTML safety.** All tenant-supplied text is HTML-encoded, branding colour is validated as `#rrggbb`, and logos load via `<img>` data
   URIs (scripts inside an SVG do not run). Markdown output escapes `<`, `>` and `|`.
 - **DNS lookups.** On macOS/Linux, SPF/DKIM/DMARC lookups use DNS-over-HTTPS (default Cloudflare), which sends the client's domain
