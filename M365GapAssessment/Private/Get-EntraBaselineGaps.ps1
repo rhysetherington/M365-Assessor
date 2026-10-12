@@ -10,16 +10,17 @@ function Test-EmergencyAccessCandidate {
             ExcludedPolicyCount    [int]     enabled Conditional Access policies that exclude this user (directly or via an excluded group)
             EnabledPolicyCount     [int]     enabled Conditional Access policies in the tenant
             LastSignInUtc          [datetime or $null]
-        Return $true if the account looks like break-glass, $false if not, or $null if the rule is not implemented yet
-        (the caller then reports the check as NotAssessed instead of guessing).
+        Return $true if the account is a candidate break-glass account, $false if not. Returning $null means "cannot tell"
+        and makes the caller report the check as NotAssessed instead of guessing.
     #>
     [CmdletBinding()]
     param([Parameter(Mandatory)]$Candidate)
 
-    # TODO(human): implement the rule (see the Learn by Doing note in the chat).
-    # Trade-off: signals that are easy to satisfy by accident (cloud-only UPN) versus signals that prove intent
-    # (excluded from every enabled policy). Too strict misses real accounts; too loose counts ordinary admins.
-    return $null
+    # Deliberately lenient and domain-agnostic: clients keep break-glass accounts on either the *.onmicrosoft.com domain or a
+    # custom domain, so the UPN suffix (IsCloudOnlyDomain) is NOT used. Being excluded from at least one enabled Conditional
+    # Access policy is the signal that someone planned for this account to bypass sign-in controls. This only nominates
+    # candidates; whether an account really is break-glass (naming, offline password, monitoring) needs manual review.
+    return ($Candidate.ExcludedPolicyCount -gt 0)
 }
 
 function Get-EntraBaselineGaps {
@@ -146,13 +147,16 @@ function Get-EntraBaselineGaps {
 
         $verdicts = @($candidates | ForEach-Object { Test-EmergencyAccessCandidate -Candidate $_ })
         if ($verdicts | Where-Object { $null -eq $_ }) {
-            New-Finding -Id 'ENT-CA-009' -Status NotAssessed -Detail 'The emergency-access detection rule is not implemented yet (Test-EmergencyAccessCandidate).'
+            New-Finding -Id 'ENT-CA-009' -Status NotAssessed -Detail 'The emergency-access rule could not decide for at least one account (Test-EmergencyAccessCandidate returned $null).'
         }
         else {
-            $found = @($candidates | Where-Object { Test-EmergencyAccessCandidate -Candidate $_ } | ForEach-Object { $_.UserPrincipalName })
+            $found = @($candidates | Where-Object { Test-EmergencyAccessCandidate -Candidate $_ } | ForEach-Object {
+                    "$($_.UserPrincipalName) (excluded from $($_.ExcludedPolicyCount) of $($_.EnabledPolicyCount) enabled Conditional Access policies)"
+                })
             New-Finding -Id 'ENT-CA-009' -Status $(if ($found.Count -ge 2) { 'Pass' } else { 'Gap' }) `
-                -AffectedObjects $(if ($found.Count -ge 2) { @() } else { @("Identified $($found.Count) emergency access account(s); at least 2 expected") }) `
-                -Detail "Heuristic over $($candidates.Count) permanent Global Administrator(s). Identified: $(if ($found.Count) { $found -join ', ' } else { 'none' })."
+                -AffectedObjects $(if ($found.Count -ge 2) { @() } else { @("Identified $($found.Count) candidate emergency access account(s); at least 2 expected") }) `
+                -Detail ("Heuristic over $($candidates.Count) permanent Global Administrator(s): an account counts as a candidate if an enabled Conditional Access policy excludes it. " +
+                    "Candidates (confirm manually that they really are break-glass accounts): $(if ($found.Count) { $found -join '; ' } else { 'none' }).")
         }
     }
 

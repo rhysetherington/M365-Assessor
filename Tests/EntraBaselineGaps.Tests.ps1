@@ -138,55 +138,68 @@ Describe 'ENT-GRP-003 public Microsoft 365 groups' {
     }
 }
 
+Describe 'Test-EmergencyAccessCandidate rule' {
+    It 'nominates an account excluded from at least one enabled policy' {
+        $c = [pscustomobject]@{ UserPrincipalName = 'a@contoso.com'; ExcludedPolicyCount = 1; EnabledPolicyCount = 5; IsCloudOnlyDomain = $false }
+        InModuleScope M365GapAssessment -Parameters @{ C = $c } { Test-EmergencyAccessCandidate -Candidate $C } | Should -BeTrue
+    }
+    It 'does not nominate an account that no policy excludes' {
+        $c = [pscustomobject]@{ UserPrincipalName = 'a@contoso.onmicrosoft.com'; ExcludedPolicyCount = 0; EnabledPolicyCount = 5; IsCloudOnlyDomain = $true }
+        InModuleScope M365GapAssessment -Parameters @{ C = $c } { Test-EmergencyAccessCandidate -Candidate $C } | Should -BeFalse
+    }
+    It 'ignores the UPN domain: custom-domain and onmicrosoft.com accounts are treated alike' {
+        $custom = [pscustomobject]@{ ExcludedPolicyCount = 2; IsCloudOnlyDomain = $false }
+        $cloud = [pscustomobject]@{ ExcludedPolicyCount = 2; IsCloudOnlyDomain = $true }
+        InModuleScope M365GapAssessment -Parameters @{ A = $custom; B = $cloud } {
+            (Test-EmergencyAccessCandidate -Candidate $A) -eq (Test-EmergencyAccessCandidate -Candidate $B)
+        } | Should -BeTrue
+    }
+}
+
 Describe 'ENT-CA-009 emergency access accounts' {
     BeforeAll {
-        # Two permanent Global Admins; one is excluded directly from 2 policies, the other only via an excluded group in 1 policy.
+        # bg1: cloud-only, excluded directly from P1+P2. bg2: CUSTOM domain, excluded only via group g1 in P1.
+        # plain: permanent GA that no policy excludes. timeboxed: not permanent, must be ignored.
         $script:Roles = J '{"value":[
             {"assignmentType":"Assigned","endDateTime":null,"roleDefinition":{"displayName":"Global Administrator"},"principal":{"@odata.type":"#microsoft.graph.user","id":"u1","userPrincipalName":"bg1@contoso.onmicrosoft.com","displayName":"BG1"}},
-            {"assignmentType":"Assigned","endDateTime":null,"roleDefinition":{"displayName":"Global Administrator"},"principal":{"@odata.type":"#microsoft.graph.user","id":"u2","userPrincipalName":"bg2@contoso.onmicrosoft.com","displayName":"BG2"}},
+            {"assignmentType":"Assigned","endDateTime":null,"roleDefinition":{"displayName":"Global Administrator"},"principal":{"@odata.type":"#microsoft.graph.user","id":"u2","userPrincipalName":"bg2@contoso.com","displayName":"BG2"}},
+            {"assignmentType":"Assigned","endDateTime":null,"roleDefinition":{"displayName":"Global Administrator"},"principal":{"@odata.type":"#microsoft.graph.user","id":"u4","userPrincipalName":"plain@contoso.com","displayName":"Plain"}},
             {"assignmentType":"Assigned","endDateTime":"2030-01-01T00:00:00Z","roleDefinition":{"displayName":"Global Administrator"},"principal":{"@odata.type":"#microsoft.graph.user","id":"u3","userPrincipalName":"timeboxed@contoso.com","displayName":"Timeboxed"}}]}'
         $script:Policies = J '{"value":[
             {"displayName":"P1","state":"enabled","conditions":{"users":{"excludeUsers":["u1"],"excludeGroups":["g1"]}}},
             {"displayName":"P2","state":"enabled","conditions":{"users":{"excludeUsers":["u1"],"excludeGroups":[]}}},
             {"displayName":"P3","state":"enabled","conditions":{"users":{"excludeUsers":[],"excludeGroups":[]}}},
-            {"displayName":"Off","state":"disabled","conditions":{"users":{"excludeUsers":["u2"],"excludeGroups":[]}}}]}'
+            {"displayName":"Off","state":"disabled","conditions":{"users":{"excludeUsers":["u4"],"excludeGroups":[]}}}]}'
         $script:Members = J '{"value":[{"id":"u2"}]}'
         $script:Override = @{ 'roleAssignmentScheduleInstances' = $script:Roles; 'conditionalAccess/policies' = $script:Policies; '/members' = $script:Members }
     }
 
-    It 'is not assessed while the detection rule is unimplemented (returns $null)' {
-        $r = Invoke-Baseline $script:Override
-        $r['ENT-CA-009'].Status | Should -Be 'NotAssessed'
-        $r['ENT-CA-009'].Detail | Should -BeLike '*not implemented*'
+    It 'passes when two candidates are found, including a custom-domain account excluded via a group' {
+        $f = (Invoke-Baseline $script:Override)['ENT-CA-009']
+        $f.Status | Should -Be 'Pass'
+        $f.Detail | Should -BeLike '*bg1@contoso.onmicrosoft.com*'
+        $f.Detail | Should -BeLike '*bg2@contoso.com*'
     }
-
-    Context 'with a stand-in rule (cloud-only accounts count)' {
-        BeforeAll {
-            InModuleScope M365GapAssessment {
-                $script:Seen = @()
-                function script:Test-EmergencyAccessCandidate { param($Candidate) $script:Seen += $Candidate; return [bool]$Candidate.IsCloudOnlyDomain }
-            }
-        }
-        It 'passes when two accounts are identified' {
-            (Invoke-Baseline $script:Override)['ENT-CA-009'].Status | Should -Be 'Pass'
-        }
-        It 'feeds the rule one record per permanent Global Administrator (time-boxed assignments are skipped)' {
-            $null = Invoke-Baseline $script:Override
-            $seen = InModuleScope M365GapAssessment { $script:Seen | Sort-Object UserPrincipalName -Unique }
-            @($seen).Count | Should -Be 2
-            ($seen.UserPrincipalName -join ',') | Should -Not -BeLike '*timeboxed*'
-        }
-        It 'counts direct and group-based exclusions from enabled policies only' {
-            $null = Invoke-Baseline $script:Override
-            $seen = InModuleScope M365GapAssessment { $script:Seen }
-            ($seen | Where-Object UserPrincipalName -like 'bg1@*' | Select-Object -First 1).ExcludedPolicyCount | Should -Be 2   # P1 and P2
-            ($seen | Where-Object UserPrincipalName -like 'bg2@*' | Select-Object -First 1).ExcludedPolicyCount | Should -Be 1   # P1 via group g1; disabled policy ignored
-            ($seen | Select-Object -First 1).EnabledPolicyCount | Should -Be 3
-        }
-        It 'fails when fewer than two accounts are identified' {
-            $one = J '{"value":[{"assignmentType":"Assigned","endDateTime":null,"roleDefinition":{"displayName":"Global Administrator"},"principal":{"@odata.type":"#microsoft.graph.user","id":"u1","userPrincipalName":"bg1@contoso.onmicrosoft.com","displayName":"BG1"}}]}'
-            $r = Invoke-Baseline @{ 'roleAssignmentScheduleInstances' = $one; 'conditionalAccess/policies' = $script:Policies; '/members' = $script:Members }
-            $r['ENT-CA-009'].Status | Should -Be 'Gap'
-        }
+    It 'reports exclusion counts from enabled policies only (direct and group-based)' {
+        $f = (Invoke-Baseline $script:Override)['ENT-CA-009']
+        $f.Detail | Should -BeLike '*bg1@contoso.onmicrosoft.com (excluded from 2 of 3 enabled*'
+        $f.Detail | Should -BeLike '*bg2@contoso.com (excluded from 1 of 3 enabled*'
+    }
+    It 'does not nominate admins that no enabled policy excludes, nor time-boxed assignments' {
+        $f = (Invoke-Baseline $script:Override)['ENT-CA-009']
+        $f.Detail | Should -Not -BeLike '*plain@contoso.com*'      # only excluded by the disabled policy
+        $f.Detail | Should -Not -BeLike '*timeboxed*'
+    }
+    It 'tells the reader the result needs manual confirmation' {
+        (Invoke-Baseline $script:Override)['ENT-CA-009'].Detail | Should -BeLike '*confirm manually*'
+    }
+    It 'fails when fewer than two candidates exist' {
+        $one = J '{"value":[{"assignmentType":"Assigned","endDateTime":null,"roleDefinition":{"displayName":"Global Administrator"},"principal":{"@odata.type":"#microsoft.graph.user","id":"u1","userPrincipalName":"bg1@contoso.onmicrosoft.com","displayName":"BG1"}}]}'
+        $r = Invoke-Baseline @{ 'roleAssignmentScheduleInstances' = $one; 'conditionalAccess/policies' = $script:Policies; '/members' = $script:Members }
+        $r['ENT-CA-009'].Status | Should -Be 'Gap'
+        $r['ENT-CA-009'].AffectedObjects[0] | Should -BeLike '*1 candidate*'
+    }
+    It 'fails in a tenant with no enabled Conditional Access policies' {
+        (Invoke-Baseline @{ 'roleAssignmentScheduleInstances' = $script:Roles })['ENT-CA-009'].Status | Should -Be 'Gap'
     }
 }

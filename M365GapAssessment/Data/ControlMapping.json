@@ -683,7 +683,8 @@
       "id": "ENT-CA-009", "domain": "Entra ID", "name": "Fewer than two emergency (break-glass) access accounts identified", "severity": "Medium",
       "scf": "BCD-01", "nistCsf": "PR.IR-03",
       "remediation": [
-        "Create two cloud-only accounts on the *.onmicrosoft.com domain with permanent Global Administrator and long random passwords stored offline.",
+        "Manual review: confirm which Global Administrators are meant to be break-glass accounts (the tool only nominates accounts excluded from Conditional Access).",
+        "Create two cloud-only accounts (on the *.onmicrosoft.com domain or a custom domain, per your standard) with permanent Global Administrator and long random passwords stored offline.",
         "Exclude both from every Conditional Access policy (directly or through a dedicated group).",
         "Alert on any sign-in by these accounts and test them at least twice a year."
       ]
