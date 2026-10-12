@@ -31,9 +31,9 @@ function Get-SecureScoreGaps {
             -Detail "Current Secure Score $percent% (target $TargetScorePercent%).$peerText"
 
         $gaps = foreach ($cs in $latest.controlScores) {
-            $profile = $profileById[[string]$cs.controlName]
-            if ($profile -and $profile.deprecated) { continue }
-            $max = if ($profile.maxScore) { [double]$profile.maxScore } else { $null }
+            $scoreProfile = $profileById[[string]$cs.controlName]
+            if ($scoreProfile -and $scoreProfile.deprecated) { continue }
+            $max = if ($scoreProfile.maxScore) { [double]$scoreProfile.maxScore } else { $null }
             if ($null -eq $max) { continue }
             $achieved = [double]$cs.score
             $status = if ($cs.implementationStatus) { [string]$cs.implementationStatus } elseif ($achieved -ge $max) { 'Implemented' } else { 'Not fully implemented' }
@@ -44,8 +44,8 @@ function Get-SecureScoreGaps {
             if ($achieved -ge $max -or $status -match '^(implemented|completed)$') { continue }
             [pscustomobject]@{
                 Category = $cs.controlCategory
-                Workload = & { $w = if ($profile.service) { [string]$profile.service } elseif ($cs.controlCategory) { [string]$cs.controlCategory } else { 'Other' }; if ($workloadNames.ContainsKey($w)) { $workloadNames[$w] } else { $w } }
-                Title    = if ($profile.title) { $profile.title } else { $cs.controlName }
+                Workload = & { $w = if ($scoreProfile.service) { [string]$scoreProfile.service } elseif ($cs.controlCategory) { [string]$cs.controlCategory } else { 'Other' }; if ($workloadNames.ContainsKey($w)) { $workloadNames[$w] } else { $w } }
+                Title    = if ($scoreProfile.title) { $scoreProfile.title } else { $cs.controlName }
                 Achieved = $achieved
                 Max      = $max
                 Gap      = $max - $achieved

@@ -45,3 +45,31 @@ jobs:
         with:
           name: pester-results-${{ matrix.os }}
           path: testResults.xml
+
+  analyzer:
+    name: PSScriptAnalyzer
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PSScriptAnalyzer
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module PSScriptAnalyzer -MinimumVersion 1.22.0 -Scope CurrentUser -Force
+
+      # The module, docs generator and helper script are analysed. Tests/ is left out: its fake cmdlets deliberately use
+      # patterns (Invoke-Expression, unused parameters) that are wrong in product code. Rules that are switched off are
+      # listed with reasons in PSScriptAnalyzerSettings.psd1. Any other warning or error fails the job.
+      - name: Analyze
+        shell: pwsh
+        run: |
+          $results = foreach ($path in './M365GapAssessment', './Docs', './run-assessment.ps1') {
+              Invoke-ScriptAnalyzer -Path $path -Recurse -Settings ./PSScriptAnalyzerSettings.psd1
+          }
+          if ($results) {
+              $results | Format-Table RuleName, Severity, ScriptName, Line, Message -AutoSize -Wrap | Out-String -Width 200 | Write-Host
+              foreach ($r in $results) { Write-Host "::error file=$($r.ScriptPath),line=$($r.Line)::$($r.RuleName): $($r.Message)" }
+              throw "PSScriptAnalyzer reported $(@($results).Count) finding(s)."
+          }
+          Write-Host 'PSScriptAnalyzer: no findings.'

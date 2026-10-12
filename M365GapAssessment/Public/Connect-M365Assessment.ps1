@@ -27,7 +27,6 @@ function Connect-M365Assessment {
         [switch]$Force
     )
 
-    $isAppOnly = $PSCmdlet.ParameterSetName -in 'Secret', 'Cert'
     $acceptedRoles = 'Global Reader', 'Global Administrator', 'Security Reader', 'Security Administrator'
 
     $ctx = Get-MgContext
