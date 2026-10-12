@@ -3,8 +3,8 @@
 Companion to `M365SAT-comparison.md`. All new checks are **written fresh** from CIS and Microsoft documentation (see licence position in the comparison).
 Each item keeps the module's rules: read-only, `Invoke-Collector` + `New-Finding`, one `ControlMapping.json` entry per finding.
 
-**Status as of 2026-10-12.** The module now has 97 findings (the review started from 70) and a 790-test offline Pester suite. Of the 8 numbered plan
-items, 3 are done (1, 3 and 4), 3 are partly done (2: one check open; 6: suite built, CI and analyzer open; 7: wired, not live-tested) and 2 are not
+**Status as of 2026-10-12.** The module now has 97 findings (the review started from 70) and an 826-test offline Pester suite that runs in GitHub Actions. Of the 8 numbered plan
+items, 4 are done (1, 3, 4 and 6), 2 are partly done (2: one check open; 7: wired, not live-tested) and 2 are not
 started (5 and 8). Three unplanned areas were also built. What remains is listed in section 2.
 
 Effort: S = under half a day, M = 1-2 days, L = several days.
@@ -18,7 +18,7 @@ Effort: S = under half a day, M = 1-2 days, L = several days.
 | 3 | Evidence files | **Done**, live-verified | `-IncludeEvidence`; formula injection tested offline only (no live item started with `=+-@`). |
 | 4 | CIS view | **Done**, live-verified | `-CisView`. **No L1/L2 level**: the mapping has no level data. |
 | 5 | CIS coverage generator | **Not started** | Needs the licensed CIS benchmark list as input. |
-| 6 | Pester suite | **Done**; CI and PSScriptAnalyzer **not done** | 771 offline tests, each feature checked by breaking it in a copy. No CI config, no analyzer. |
+| 6 | Pester suite, CI and analyzer | **Done** | 826 offline tests, each feature checked by breaking it in a copy. GitHub Actions runs Pester on Linux, macOS and Windows plus PSScriptAnalyzer (`.github/workflows/ci.yml`; rule exclusions and reasons in `PSScriptAnalyzerSettings.psd1`). |
 | 7 | Sovereign cloud validation | **Wired, not live-tested** | One cloud table drives all services; only `Global` is live-tested. Germany rejected. |
 | 8 | Azure subscription domain | **Not started** | Still needs the dependency decision (see below). |
 | + | Defender for Office 365 depth | **Done**, live-verified | New: `DFO-001..014`. Not in the original plan. |
@@ -39,7 +39,6 @@ This is an estimate by title, not a CIS benchmark score: M365SAT ships only abou
 ### Open plan items
 - **Outlook on the web storage providers (item 2, S).** `Get-OwaMailboxPolicy` in the Exchange session; confirm Global Reader can read it before building.
 - **CIS coverage generator (item 5, S).** `Docs/Get-CisCoverage.ps1`: reads `ControlMapping.json` plus a user-supplied CSV of benchmark recommendation IDs and titles and emits Covered / Partial / Missing. The CSV must come from the licensed CIS download and must not be committed.
-- **Continuous integration and PSScriptAnalyzer (item 6, S).** Run `Invoke-Pester ./Tests` and PSScriptAnalyzer on every change. The suite is offline and takes about a minute, so it suits CI.
 - **Live tests in the other clouds (item 7, needs tenants).** GCC High, DoD and China are wired but untested; support cannot be claimed until each has been run live. Teams is unsupported in China by design.
 - **Azure subscription domain (item 8, L).** Decision needed: accept an `Az.*` dependency (heavy, version-pinning issues M365SAT hit) or use ARM REST with one `Invoke-ArmRequestWithRetry` helper mirroring the Graph one. Recommendation unchanged: ARM REST.
 
@@ -86,8 +85,10 @@ Audit log search enabled and OneDrive sync restrictions are covered; Outlook on 
 ### 5. CIS coverage generator (S): open
 See "Open plan items".
 
-### 6. Pester suite and CI check (M): suite done, CI open
+### 6. Pester suite and CI check (M): done
 Covers findings and scoring, the compare cmdlet, DNS helper, mapping integrity, every new collector with fake Graph or fake cmdlets, report rendering, sessions, clouds and the generated documentation.
+
+CI (`.github/workflows/ci.yml`) runs the suite on Ubuntu, macOS and Windows for every push to `main` and every pull request, and runs PSScriptAnalyzer over the module, `Docs/` and `run-assessment.ps1`. `.gitattributes` pins LF line endings so the generated-document drift test passes on Windows. The analyzer excludes five rules, each with its reason in the settings file; any other finding fails the job.
 
 ### 7. Sovereign cloud validation (M): wired, untested live
 One table (`Private/CloudEnvironments.ps1`) drives Graph, Exchange, Purview and Teams; the run refuses if the Graph session lands in a different cloud than requested.
@@ -102,7 +103,6 @@ Opt-in `Azure` domain with read-only checks (Defender for Cloud plans, storage p
 - Credentials as command-line parameters (keep certificate, device code and interactive).
 
 ## 6. Suggested order from here
-1. CI with Pester and PSScriptAnalyzer: protects everything built so far.
-2. Outlook on the web storage providers, then the CIS coverage generator.
-3. Report layout fix for narrow screens.
-4. Live tests in a sovereign cloud when a tenant is available, then the Azure domain once the dependency decision is made.
+1. Outlook on the web storage providers, then the CIS coverage generator.
+2. Report layout fix for narrow screens.
+3. Live tests in a sovereign cloud when a tenant is available, then the Azure domain once the dependency decision is made.
