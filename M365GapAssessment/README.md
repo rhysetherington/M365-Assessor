@@ -1,10 +1,38 @@
 # M365GapAssessment
 
-Read-only Microsoft 365 security gap assessment for PowerShell 7+. Collects Entra ID, Defender/Intune and Secure Score
-data through Microsoft Graph, maps every check to **SCF** and **NIST CSF 2.0** (plus **CIS Microsoft 365 Foundations v7.0.0** where a check clearly matches a recommendation), and exports JSON, Markdown and an
-executive HTML report. Built for a reviewer signed in as **Global Reader** and for repeatable multi-tenant (MSP) use.
+Read-only Microsoft 365 security gap assessment for PowerShell 7+. It reads your tenant through Microsoft Graph and, optionally,
+Exchange Online, Defender for Office 365, Purview and Teams PowerShell, checks the result against a set of security controls, scores
+it, and writes a JSON, Markdown and HTML report. Every check is mapped to **SCF** and **NIST CSF 2.0**, and to **CIS Microsoft 365
+Foundations v7.0.0** where it matches a recommendation. Built for a reviewer signed in as **Global Reader**, for evaluating your own
+tenant, and for repeatable multi-tenant (consulting) use.
 
-The module never writes to a tenant: every call is an HTTP `GET`.
+The module never writes to a tenant: every Graph call is an HTTP `GET` and the PowerShell domains use `Get-*` cmdlets only.
+
+## Check your own tenant
+
+1. Install the prerequisites and import the module (sections 1 and 2 below).
+2. Run it and sign in when the browser opens:
+
+   ```powershell
+   Invoke-M365SecurityReview -TenantId yourtenant.onmicrosoft.com -Format JSON,Markdown,HTML
+   ```
+
+3. **First time in a tenant:** the "Microsoft Graph Command Line Tools" app needs a one-off admin approval for its read-only scopes
+   (see *Admin consent* below). If you are the tenant's Global Administrator, sign in with that account and tick *Consent on behalf of
+   your organization*.
+4. **If you sign in as a Global Administrator** the tool warns you and asks `Continue as Global Administrator? [y/N]`, because a
+   read-only assessment needs only Global Reader. Answer `y` to continue, or sign in with a Global Reader account instead.
+5. After sign-in it asks five short questions for the report header (client name, assessment name, assessor, date, reference). Press
+   Enter to accept each default, or add `-NoPrompt` to skip them.
+6. Open the report. The reports are written to `./M365Assessment/<ClientName>-<date>/`: the `.html` file is the readable one, the `.md`
+   file is the same content in text, and the `-Findings.json` file holds the raw data.
+
+The default run covers Entra ID and its policies, Defender, Secure Score, SharePoint settings, licensing and email DNS using only the
+Graph sign-in. For Exchange Online, Defender for Office 365, Purview and Teams, add them with `-Domain` (see *Coverage*); each needs
+its own PowerShell module and one more sign-in.
+
+Reports contain real data about your tenant. Keep them out of source control: `M365Assessment/` and `Assessments/` are already in this
+repository's `.gitignore`.
 
 ## 1. Install prerequisites
 
@@ -17,6 +45,11 @@ Install-Module Microsoft.Graph.Authentication -Scope CurrentUser
 
 `Microsoft.Graph.Beta` is optional: beta endpoints (Intune managed devices) are called through `Invoke-MgGraphRequest`.
 
+Only for the opt-in domains (see *Coverage*): `Install-Module ExchangeOnlineManagement -Scope CurrentUser` (Exchange Online, Defender for
+Office 365, Purview) and `Install-Module MicrosoftTeams -Scope CurrentUser` (Teams). Only to run the tests: Pester 5
+(`Install-Module Pester -MinimumVersion 5.0 -Scope CurrentUser`). If the Graph module is missing, importing this module stops with the
+install command.
+
 ## 2. Import
 
 ```powershell
@@ -26,7 +59,7 @@ Import-Module ./M365GapAssessment/M365GapAssessment.psd1 -Force
 ## 3. Run
 
 ```powershell
-# Interactive sign-in, JSON + Markdown + HTML into ./M365Assessment/<tenantId>_<timestamp>/
+# Interactive sign-in, JSON + Markdown + HTML into ./M365Assessment/<ClientName>-<yyyy-MM-dd>/
 Invoke-M365SecurityReview -TenantId contoso.onmicrosoft.com -Format JSON,Markdown,HTML
 
 # Device code (headless / jump host). Blocked in tenants with Security Defaults enabled, and in new tenants from July 2026:
@@ -43,6 +76,10 @@ Invoke-M365SecurityReview -TenantId <guid> -Credential (Get-Credential)
 Invoke-M365SecurityReview -Domain EntraID,SecureScore -StaleDays 60 -TargetScorePercent 80
 ```
 
+Domains run by default: `Licensing`, `EntraID`, `EntraPolicy`, `Defender`, `SecureScore`, `EmailDns`, `SharePoint`. Opt-in (add with
+`-Domain`, each needs one more sign-in): `ExchangeOnline`, `DefenderO365`, `Purview`, `Teams`. The repository's `run-assessment.ps1` runs all
+of them.
+
 ### Multi-tenant, repeatable runs
 
 ```powershell
@@ -52,8 +89,8 @@ $results | Select-Object TenantName, Score, @{n='Critical';e={$_.Summary.GapsByS
 ```
 
 Switching tenants disconnects the previous Graph session first. Each run writes to its own
-`<tenantId>_<yyyyMMdd-HHmm>` folder, so re-running monthly gives a history you can diff
-(`AssessmentFindings.json` is stable and ingestible).
+`<ClientName>-<yyyy-MM-dd>` folder (a second run on the same day adds an `-HHmm` suffix instead of overwriting), so re-running monthly
+gives a history you can diff (the `-Findings.json` file is stable and ingestible; see *Assessment details and file naming*).
 
 ## Permissions
 

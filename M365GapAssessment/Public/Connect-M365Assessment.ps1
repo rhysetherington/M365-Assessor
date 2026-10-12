@@ -9,6 +9,24 @@ function Connect-M365Assessment {
         (default No) when one is used, and stops in a session that cannot ask unless -AllowGlobalAdministrator is passed on purpose.
         -Environment selects the Microsoft cloud (Global, USGov = GCC High, USGovDoD, China). Exchange, Security & Compliance and
         Teams follow the same cloud. Only Global has been run against a live tenant; the others warn that they are untested.
+    .PARAMETER TenantId
+        Tenant to sign in to, a GUID or domain name. Omit it to use the sign-in's home tenant.
+    .PARAMETER UseDeviceAuthentication
+        Sign in with a device code instead of a browser window.
+    .PARAMETER Credential
+        App-only sign-in with a client secret: the user name is the client ID, the password is the secret.
+    .PARAMETER CertificateThumbprint
+        Thumbprint of the certificate for app-only sign-in; use together with -ClientId.
+    .PARAMETER ClientId
+        Application (client) ID for app-only sign-in with a certificate.
+    .PARAMETER Environment
+        Microsoft cloud: Global (default), USGov (GCC High), USGovDoD or China.
+    .PARAMETER SkipRoleCheck
+        Do not require a read role. The Global Administrator confirmation still applies.
+    .PARAMETER AllowGlobalAdministrator
+        Continue as Global Administrator without being asked (a warning is still printed).
+    .PARAMETER Force
+        Disconnect and sign in again even if a matching Graph session already exists.
     .EXAMPLE
         Connect-M365Assessment -TenantId contoso.onmicrosoft.com
     .EXAMPLE

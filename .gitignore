@@ -1,4 +1,6 @@
 Assessments/
+# default -ExportPath of Invoke-M365SecurityReview: reports hold real tenant data
+M365Assessment/
 .DS_Store
 # never commit credentials, certificates or client-specific inputs
 *.pfx

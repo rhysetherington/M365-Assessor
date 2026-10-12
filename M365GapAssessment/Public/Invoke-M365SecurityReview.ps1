@@ -1,11 +1,79 @@
 function Invoke-M365SecurityReview {
     <#
     .SYNOPSIS
-        Runs the full read-only assessment (Entra ID, Defender, Secure Score) for one or more tenants and exports reports.
+        Runs a read-only Microsoft 365 security gap assessment for one or more tenants and writes the reports.
+    .DESCRIPTION
+        Signs in (interactive by default), runs the selected check domains, scores the result, and writes JSON, Markdown and/or HTML
+        reports. Nothing is ever changed in the tenant: Microsoft Graph calls are GET requests and the Exchange, Purview and Teams
+        domains use Get-* cmdlets only. Global Reader is enough; a Global Administrator is asked to confirm first.
+        The default domains need only the Graph sign-in. ExchangeOnline, DefenderO365, Purview and Teams are opt-in because each needs
+        its own PowerShell module and one more sign-in. If -TenantId is omitted you are asked for it; nothing about a tenant is stored.
+        After sign-in you are also asked a few report details (client name, assessor and so on); -NoPrompt accepts the defaults.
+    .PARAMETER TenantId
+        One or more tenants, each a GUID or a domain name (contoso.onmicrosoft.com). Asked for when omitted.
+    .PARAMETER ExportPath
+        Folder the reports are written under; each run gets its own subfolder named ClientName-YYYY-MM-DD. Defaults to .\M365Assessment.
+    .PARAMETER Format
+        JSON, Markdown and/or HTML. The JSON findings file is always written. Default: JSON and Markdown.
+    .PARAMETER Credential
+        App-only sign-in with a client secret: the user name is the application (client) ID and the password is the secret.
+    .PARAMETER ClientId
+        Application (client) ID for app-only sign-in with a certificate; use together with -CertificateThumbprint.
+    .PARAMETER CertificateThumbprint
+        Thumbprint of the certificate for app-only sign-in; use together with -ClientId.
+    .PARAMETER UseDeviceAuthentication
+        Sign in with a device code instead of a browser window (for headless machines). Blocked where Security Defaults is on.
+    .PARAMETER Environment
+        Microsoft cloud: Global (default), USGov (GCC High), USGovDoD or China. Only Global has been tested against a live tenant.
+    .PARAMETER Domain
+        Which check domains to run. Default: Licensing, EntraID, EntraPolicy, Defender, SecureScore, EmailDns, SharePoint.
+        Opt-in: ExchangeOnline, DefenderO365, Purview, Teams.
+    .PARAMETER DohEndpoint
+        DNS-over-HTTPS resolver used for the SPF, DMARC and DKIM lookups on macOS and Linux. Your verified domain names are sent to it.
+    .PARAMETER StaleDays
+        Days without sign-in after which an account or role assignment counts as stale. Default 90.
+    .PARAMETER SecretWarningDays
+        Warn about application secrets and certificates that expire within this many days. Default 30.
+    .PARAMETER TargetScorePercent
+        Microsoft Secure Score percentage the tenant is expected to reach. Default 70.
+    .PARAMETER AcceptedRiskPath
+        JSON file of risks the organisation has knowingly accepted for this tenant. Matching gaps are reported as Accepted.
+    .PARAMETER ClientName
+        Client name shown in the report and used to name the output folder. Default: the first label of the tenant's primary domain.
+    .PARAMETER AssessmentName
+        Title of the assessment. Default: Microsoft 365 Security Gap Assessment.
+    .PARAMETER AssessorName
+        Who performed the assessment. Default: the signed-in account.
+    .PARAMETER AssessmentDate
+        Assessment date as yyyy-MM-dd. Default: today.
+    .PARAMETER Reference
+        Optional engagement or ticket reference shown in the report header.
+    .PARAMETER NoPrompt
+        Do not ask for the assessment details; use the parameters and defaults.
+    .PARAMETER PreparedBy
+        Name shown as the author of the report.
+    .PARAMETER BrandColor
+        Accent colour of the HTML report as #RRGGBB.
+    .PARAMETER LogoPath
+        PNG, JPEG or SVG file embedded in the HTML report.
+    .PARAMETER HideTenantId
+        Leave the tenant ID out of the HTML and Markdown reports (it remains in the JSON file).
+    .PARAMETER IncludeEvidence
+        Also write evidence\<FindingId>.csv with the full list of affected items for each gap.
+    .PARAMETER CisView
+        Add a section that regroups findings by CIS Microsoft 365 Foundations recommendation.
+    .PARAMETER SkipRoleCheck
+        Do not require the signed-in account to hold a read role. It does not skip the Global Administrator confirmation.
+    .PARAMETER AllowGlobalAdministrator
+        Run as Global Administrator without being asked. Needed for unattended runs that sign in with that role; a warning is still printed.
+    .PARAMETER NoExport
+        Return the results without writing any files.
     .EXAMPLE
         Invoke-M365SecurityReview -TenantId contoso.onmicrosoft.com -Format JSON,Markdown,HTML
     .EXAMPLE
         'tenantA.onmicrosoft.com','tenantB.onmicrosoft.com' | ForEach-Object { Invoke-M365SecurityReview -TenantId $_ -UseDeviceAuthentication }
+    .EXAMPLE
+        Invoke-M365SecurityReview -TenantId contoso.onmicrosoft.com -Domain EntraID,EntraPolicy,ExchangeOnline,Teams -NoPrompt
     #>
     [CmdletBinding()]
     param(

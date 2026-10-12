@@ -11,8 +11,12 @@ function Compare-M365Assessment {
           Changed   - open in both, but severity or the set of affected objects differs (AddedObjects / RemovedObjects listed)
           Unchanged - open in both with the same severity and affected objects
         Affected objects are compared on the text before " - " or " (" so changing detail suffixes (dates, counts) do not register as changes.
+    .PARAMETER Baseline
+        The earlier assessment: a path to its AssessmentFindings.json, or the assessment object.
+    .PARAMETER Current
+        The later assessment: a path to its AssessmentFindings.json, or the assessment object.
     .EXAMPLE
-        Compare-M365Assessment -Baseline .\Assessments\t_20260901-0900\AssessmentFindings.json -Current .\Assessments\t_20261001-0900\AssessmentFindings.json
+        Compare-M365Assessment -Baseline .\M365Assessment\Contoso-2026-09-01\Contoso-2026-09-01-Findings.json -Current .\M365Assessment\Contoso-2026-10-01\Contoso-2026-10-01-Findings.json
     #>
     [CmdletBinding()]
     param(

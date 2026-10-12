@@ -2,6 +2,14 @@ function Export-M365GapReport {
     <#
     .SYNOPSIS
         Writes AssessmentFindings.json (always) plus Markdown and/or HTML reports for an assessment object.
+    .PARAMETER Assessment
+        The assessment object returned by Invoke-M365SecurityReview. Accepts pipeline input.
+    .PARAMETER ExportPath
+        Folder to write the files to; it is created if needed.
+    .PARAMETER Format
+        JSON, Markdown and/or HTML. The JSON findings file is always written. Default: JSON and Markdown.
+    .PARAMETER Branding
+        Hashtable of report options: ClientName, PreparedBy, BrandColor (#RRGGBB), LogoPath (PNG, JPEG or SVG) and HideTenantId.
     .PARAMETER CisView
         Adds a section that regroups findings by CIS Microsoft 365 Foundations recommendation number and benchmark section.
     .PARAMETER IncludeEvidence

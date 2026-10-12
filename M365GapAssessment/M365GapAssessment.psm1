@@ -1,4 +1,14 @@
 # Root module: dot-source private + public functions, load the control mapping once.
+
+# The one hard prerequisite. Checked here (not through RequiredModules) so a missing module produces a message that says what to do.
+$script:GraphModule = Get-Module -ListAvailable -Name Microsoft.Graph.Authentication | Where-Object { $_.Version -ge [version]'2.0.0' } | Sort-Object Version -Descending | Select-Object -First 1
+if (-not $script:GraphModule) {
+    throw "M365GapAssessment needs the Microsoft.Graph.Authentication module, version 2.0.0 or later, and it was not found. Install it with: Install-Module Microsoft.Graph.Authentication -Scope CurrentUser   (then run Import-Module again)."
+}
+# Load it the way RequiredModules would have: once, into the global session (re-importing this module with -Force must not reload it).
+if (-not (Get-Module -Name Microsoft.Graph.Authentication | Where-Object { $_.Version -ge [version]'2.0.0' })) {
+    Import-Module -Name Microsoft.Graph.Authentication -MinimumVersion 2.0.0 -Global -ErrorAction Stop
+}
 $script:ModuleRoot       = $PSScriptRoot
 $script:SeverityOrder    = @{ Critical = 0; High = 1; Medium = 2; Low = 3; Informational = 4 }
 $script:AssessmentContext = $null

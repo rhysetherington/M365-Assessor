@@ -5,6 +5,32 @@ function Convert-M365Report {
     .DESCRIPTION
         Useful after the report design changes, or to re-brand an earlier run for a client. Writes next to the JSON file
         unless -OutputPath is given; the JSON itself is never modified.
+    .PARAMETER Path
+        The saved AssessmentFindings.json file to render.
+    .PARAMETER OutputPath
+        Folder to write the reports to. Default: the folder of the JSON file.
+    .PARAMETER Format
+        HTML and/or Markdown. Default: HTML.
+    .PARAMETER ClientName
+        Client name for the report header; overrides the saved value for this rendering only.
+    .PARAMETER AssessmentName
+        Assessment title; overrides the saved value for this rendering only.
+    .PARAMETER AssessorName
+        Who performed the assessment; overrides the saved value for this rendering only.
+    .PARAMETER AssessmentDate
+        Assessment date as yyyy-MM-dd; overrides the saved value for this rendering only.
+    .PARAMETER Reference
+        Engagement or ticket reference; overrides the saved value for this rendering only.
+    .PARAMETER PreparedBy
+        Name shown as the author of the report.
+    .PARAMETER BrandColor
+        Accent colour of the HTML report as #RRGGBB.
+    .PARAMETER LogoPath
+        PNG, JPEG or SVG file embedded in the HTML report.
+    .PARAMETER HideTenantId
+        Leave the tenant ID out of the rendered report.
+    .PARAMETER CisView
+        Add a section that regroups findings by CIS Microsoft 365 Foundations recommendation.
     .EXAMPLE
         Convert-M365Report -Path .\Assessments\<run>\AssessmentFindings.json -ClientName 'Contoso Ltd' -BrandColor '#0a6cff' -LogoPath .\logo.png
     #>
