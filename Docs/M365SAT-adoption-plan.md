@@ -3,7 +3,7 @@
 Companion to `M365SAT-comparison.md`. All new checks are **written fresh** from CIS and Microsoft documentation (see licence position in the comparison).
 Each item keeps the module's rules: read-only, `Invoke-Collector` + `New-Finding`, one `ControlMapping.json` entry per finding.
 
-**Status as of 2026-10-12.** The module now has 97 findings (the review started from 70) and a 771-test offline Pester suite. Of the 8 numbered plan
+**Status as of 2026-10-12.** The module now has 97 findings (the review started from 70) and a 790-test offline Pester suite. Of the 8 numbered plan
 items, 3 are done (1, 3 and 4), 3 are partly done (2: one check open; 6: suite built, CI and analyzer open; 7: wired, not live-tested) and 2 are not
 started (5 and 8). Three unplanned areas were also built. What remains is listed in section 2.
 
@@ -43,12 +43,13 @@ This is an estimate by title, not a CIS benchmark score: M365SAT ships only abou
 - **Live tests in the other clouds (item 7, needs tenants).** GCC High, DoD and China are wired but untested; support cannot be claimed until each has been run live. Teams is unsupported in China by design.
 - **Azure subscription domain (item 8, L).** Decision needed: accept an `Az.*` dependency (heavy, version-pinning issues M365SAT hit) or use ARM REST with one `Invoke-ArmRequestWithRetry` helper mirroring the Graph one. Recommendation unchanged: ARM REST.
 
-### Housekeeping still open
-- **Move the report builders from `Public/` to `Private/`.** `New-AssessmentHtml`, `New-AssessmentMarkdown` and `Get-ComplianceMatrix` still sit in `Public/Export-M365GapReport.ps1`.
-- **Sort `ControlMapping.json`.** `ENT-USR-006` still precedes `ENT-USR-005`; `ENT-EXT-002` is absent and should be recorded as a retired ID.
-- **README "Extending" section.** It still does not mention the `cis` and `license` fields or the opt-in domains.
+### Housekeeping: done
+- **Report builders moved to `Private/ReportBuilders.ps1`.** Output was compared byte for byte before and after (Markdown, HTML, JSON, evidence). `Tests/ModuleLayout.Tests.ps1` now enforces one function per Public file, that the manifest, `Export-ModuleMember` and the files agree, and that no function name is defined twice.
+- **`ControlMapping.json` sorted by id**, with `retiredIds` recording `ENT-EXT-002` (reserved, never shipped). Tests enforce sort order, no unexplained numbering gaps, and that a retired id is never reused.
+- **README "Extending" rewritten** for how the module works now (mapping fields and formats, `NotAssessed` rules, adding a domain, offline tests, regenerating the coverage doc), with a test that fails if it loses those points.
 
 ### Found while delivering (not in the original plan)
+- **Some mapping tests had been passing on nothing.** In Pester 5 a variable set in `BeforeDiscovery` is not visible inside an `It` block, so the duplicate-id and severity tests saw `$null`. They now load the mapping at run time and a test asserts it loaded. Worth checking any new test file for the same trap.
 - **Report layout at phone width.** The "Where to focus first" cards and long unbroken email addresses overshoot a very narrow screen by 15-35px. Appendix tables already scroll; this is a style fix (`overflow-wrap`, card widths).
 - **Global Reader limits.** As Global Reader, `PUR-006` (insider risk cmdlet not offered to the role) and `DFO-014` (user-reporting policy returned no object) report NotAssessed. Both are handled and explained; worth re-checking if Microsoft changes the role.
 - **Default client name.** The folder and client name come from the tenant's default verified domain (`contoso` for the `contoso.com` tenant). Pass `-ClientName` to override; consider preferring the domain that was typed at the prompt.
@@ -101,8 +102,7 @@ Opt-in `Azure` domain with read-only checks (Defender for Cloud plans, storage p
 - Credentials as command-line parameters (keep certificate, device code and interactive).
 
 ## 6. Suggested order from here
-1. Housekeeping (builders to `Private/`, sort the mapping, README "Extending"): small, and it removes known rough edges.
-2. CI with Pester and PSScriptAnalyzer: protects everything built so far.
-3. Outlook on the web storage providers, then the CIS coverage generator.
-4. Report layout fix for narrow screens.
-5. Live tests in a sovereign cloud when a tenant is available, then the Azure domain once the dependency decision is made.
+1. CI with Pester and PSScriptAnalyzer: protects everything built so far.
+2. Outlook on the web storage providers, then the CIS coverage generator.
+3. Report layout fix for narrow screens.
+4. Live tests in a sovereign cloud when a tenant is available, then the Azure domain once the dependency decision is made.

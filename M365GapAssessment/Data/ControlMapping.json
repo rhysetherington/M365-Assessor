@@ -1,341 +1,8 @@
 {
   "version": "1.0.0",
-  "notes": "CIS Microsoft 365 Foundations Benchmark v7.0.0 recommendation numbers ('cis') are mapped only where a check clearly tests the same setting; unmapped checks have no CIS equivalent. SCF control IDs and NIST CSF 2.0 subcategories are best-fit mappings; validate against the SCF release (e.g. 2025.x) your client uses. NIST CSF 2.0 subcategory is the primary mapping per finding.",
+  "notes": "CIS Microsoft 365 Foundations Benchmark v7.0.0 recommendation numbers ('cis') are mapped only where a check clearly tests the same setting; unmapped checks have no CIS equivalent. SCF control IDs and NIST CSF 2.0 subcategories are best-fit mappings; validate against the SCF release (e.g. 2025.x) your client uses. NIST CSF 2.0 subcategory is the primary mapping per finding. Finding IDs are never reused or renumbered: retiredIds lists numbers that were reserved but never shipped (ENT-EXT-002 was planned and dropped), and entries are kept sorted by id.",
+  "retiredIds": ["ENT-EXT-002"],
   "controls": [
-    {
-      "id": "ENT-CA-001", "domain": "Entra ID", "name": "Conditional Access policies in report-only mode", "severity": "Medium",
-      "scf": "IAC-20", "nistCsf": "PR.AA-05",
-      "remediation": [
-        "Entra admin center > Protection > Conditional Access > Policies.",
-        "Open each policy listed and review the report-only results under Insights and reporting.",
-        "If Security Defaults is enabled, disable it first (Entra admin center > Overview > Properties > Manage security defaults): Conditional Access policies cannot be enforced alongside it, so re-create its protections (admin MFA, all-user MFA, legacy block) as policies before turning it off.",
-        "When the impact is understood and break-glass accounts are excluded, set 'Enable policy' to On.",
-        "Retire report-only policies that are no longer needed."
-      ]
-    },
-    {
-      "id": "ENT-CA-002", "domain": "Entra ID", "name": "All-user Conditional Access policy without emergency (break-glass) exclusions", "severity": "High",
-      "scf": "BCD-01", "nistCsf": "PR.IR-03",
-      "remediation": [
-        "Create at least two cloud-only emergency access accounts (excluded from MFA-dependent policies, strong passwords stored offline).",
-        "Put them in a dedicated security group, e.g. 'CA-BreakGlass-Exclude'.",
-        "Entra admin center > Conditional Access > open each affected policy > Users > Exclude > select the group.",
-        "Alert on any sign-in by these accounts (Log Analytics / Sentinel / Defender XDR custom detection)."
-      ]
-    },
-    {
-      "id": "ENT-CA-003", "domain": "Entra ID", "name": "No Conditional Access policy blocking legacy authentication", "severity": "High",
-      "scf": "CFG-03", "nistCsf": "PR.AA-03", "cis": ["5.2.2.3"],
-      "remediation": [
-        "Entra admin center > Sign-in logs > filter Client app = legacy clients to find dependent apps first.",
-        "Conditional Access > New policy > Users: All users (exclude break-glass).",
-        "Target resources: All cloud apps. Conditions > Client apps: Exchange ActiveSync clients + Other clients.",
-        "Grant: Block access. Start in report-only, then enforce."
-      ]
-    },
-    {
-      "id": "ENT-CA-004", "domain": "Entra ID", "name": "No enforced Conditional Access policy requiring MFA for administrators", "severity": "Critical",
-      "scf": "IAC-06", "nistCsf": "PR.AA-03", "cis": ["5.2.2.1"],
-      "remediation": [
-        "Conditional Access > New policy > Users: Directory roles (select all privileged roles) or All users.",
-        "Target resources: All cloud apps (or at minimum Microsoft Admin Portals).",
-        "Grant: Require authentication strength (Phishing-resistant MFA) or Require multifactor authentication.",
-        "Exclude break-glass accounts; test in report-only; enable."
-      ]
-    },
-    {
-      "id": "ENT-USR-001", "domain": "Entra ID", "name": "Privileged roles assigned permanently (not managed with PIM)", "severity": "High",
-      "scf": "IAC-16", "nistCsf": "PR.AA-05", "cis": ["5.3.1"],
-      "remediation": [
-        "Entra admin center > Identity governance > Privileged Identity Management > Microsoft Entra roles > Assignments.",
-        "For each permanent active assignment: Add assignment as Eligible, then remove the permanent Active assignment.",
-        "Configure role settings: require MFA and justification on activation, set a maximum activation duration, require approval for Global Administrator.",
-        "Keep only the break-glass accounts as permanent Global Administrators."
-      ]
-    },
-    {
-      "id": "ENT-USR-002", "domain": "Entra ID", "name": "Stale enabled accounts (no sign-in for extended period)", "severity": "Medium",
-      "scf": "IAC-15", "nistCsf": "PR.AA-05",
-      "remediation": [
-        "Entra admin center > Users > All users > review each listed account with its owner/manager.",
-        "Block sign-in for confirmed unused accounts (Properties > Account enabled = No), then delete after the retention period.",
-        "Automate with Identity Governance Access Reviews or Lifecycle Workflows (leaver / inactivity).",
-        "Service and shared accounts: assign owners and exclude them only with documented justification."
-      ]
-    },
-    {
-      "id": "ENT-USR-003", "domain": "Entra ID", "name": "Member users not registered for MFA", "severity": "High",
-      "scf": "IAC-06", "nistCsf": "PR.AA-03", "cis": ["5.2.3.4"],
-      "remediation": [
-        "Entra admin center > Protection > Authentication methods > User registration details (filter MFA registered = No).",
-        "Enable the Microsoft Authenticator / FIDO2 methods and the registration campaign (Authentication methods > Registration campaign).",
-        "Create a Conditional Access policy 'Require MFA registration' (User action: Register security information) and a policy requiring MFA for all users.",
-        "Follow up with users who remain unregistered; disable accounts that are unused."
-      ]
-    },
-    {
-      "id": "ENT-USR-004", "domain": "Entra ID", "name": "Administrator accounts not registered for MFA", "severity": "Critical",
-      "scf": "IAC-06.1", "nistCsf": "PR.AA-03",
-      "remediation": [
-        "Contact each admin in the list and require registration of phishing-resistant MFA (FIDO2 key / Windows Hello / certificate-based auth).",
-        "Enforce the admin MFA Conditional Access policy so admins are prompted to register at next sign-in.",
-        "Use dedicated cloud-only admin accounts separate from day-to-day mailbox accounts."
-      ]
-    },
-    {
-      "id": "ENT-USR-006", "domain": "Entra ID", "name": "Stale eligible privileged role assignments", "severity": "Medium",
-      "scf": "IAC-17", "nistCsf": "PR.AA-05",
-      "remediation": [
-        "Entra admin center > Identity governance > Privileged Identity Management > Microsoft Entra roles > Assignments > Eligible assignments.",
-        "Remove eligible assignments for disabled or inactive accounts, or confirm each one with the role owner.",
-        "Set an expiry on eligible assignments and configure PIM access reviews (quarterly) for privileged roles."
-      ]
-    },
-    {
-      "id": "EXO-001", "domain": "Exchange Online", "name": "Mail auto-forwarding not blocked", "severity": "High",
-      "scf": "NET-12", "nistCsf": "PR.DS-02", "cis": ["6.2.1"],
-      "remediation": [
-        "Microsoft Defender portal > Email & collaboration > Policies > Anti-spam > Anti-spam outbound policy (Default).",
-        "Set 'Automatic forwarding' to Off - Forwarding is disabled.",
-        "For each mailbox listed with forwarding, remove the forwarding address (Exchange admin center > Recipients > Mailboxes > Manage mail flow settings)."
-      ]
-    },
-    {
-      "id": "EXO-002", "domain": "Exchange Online", "name": "Mailbox auditing disabled organization-wide", "severity": "High",
-      "scf": "MON-03", "nistCsf": "DE.CM-03", "cis": ["6.1.1"],
-      "remediation": [
-        "Exchange Online PowerShell: Set-OrganizationConfig -AuditDisabled $false.",
-        "Confirm with Get-OrganizationConfig | Format-List AuditDisabled."
-      ]
-    },
-    {
-      "id": "EXO-003", "domain": "Exchange Online", "name": "Modern authentication disabled for Exchange Online", "severity": "High",
-      "scf": "IAC-02", "nistCsf": "PR.AA-03", "cis": ["6.5.1"],
-      "remediation": [
-        "Exchange Online PowerShell: Set-OrganizationConfig -OAuth2ClientProfileEnabled $true.",
-        "Update any legacy Outlook clients before enforcing."
-      ]
-    },
-    {
-      "id": "EXO-004", "domain": "Exchange Online", "name": "SMTP AUTH enabled tenant-wide", "severity": "Medium",
-      "scf": "CFG-03", "nistCsf": "PR.PS-01", "cis": ["6.5.4"],
-      "remediation": [
-        "Exchange admin center > Settings > Mail flow > tick 'Turn off SMTP AUTH protocol for your organization' (or: Set-TransportConfig -SmtpClientAuthenticationDisabled $true).",
-        "Enable SMTP AUTH per mailbox only for devices that cannot use OAuth (Set-CASMailbox -SmtpClientAuthenticationDisabled $false)."
-      ]
-    },
-    {
-      "id": "EXO-005", "domain": "Exchange Online", "name": "Shared mailboxes allow direct sign-in", "severity": "Medium",
-      "scf": "IAC-15", "nistCsf": "PR.AA-01", "cis": ["1.2.2"],
-      "remediation": [
-        "Microsoft 365 admin center > Users > Active users > select the shared mailbox account > Block sign-in.",
-        "Or: Set-MgUser -UserId <id> -AccountEnabled:$false."
-      ]
-    },
-    {
-      "id": "EXO-006", "domain": "Exchange Online", "name": "No custom anti-phishing policy", "severity": "Medium",
-      "scf": "NET-12", "nistCsf": "DE.CM-09", "cis": ["2.1.7"],
-      "remediation": [
-        "Microsoft Defender portal > Email & collaboration > Policies > Threat policies > Anti-phishing > Create policy.",
-        "Enable impersonation protection for key users and domains, mailbox intelligence, and a phishing threshold of 2 or higher; apply to all recipient domains."
-      ]
-    },
-    {
-      "id": "EXO-007", "domain": "Exchange Online", "name": "Safe Links not enabled for email, Office and Teams", "severity": "Medium",
-      "scf": "NET-12", "nistCsf": "DE.CM-09", "cis": ["2.1.1"],
-      "remediation": [
-        "Microsoft Defender portal > Email & collaboration > Policies > Threat policies > Safe Links.",
-        "Create or edit a policy enabling Safe Links for email, Office applications and Teams; turn on real-time URL scanning and do-not-track disabled."
-      ]
-    },
-    {
-      "id": "TMS-001", "domain": "Microsoft Teams", "name": "Teams external federation open to all domains", "severity": "Medium",
-      "scf": "NET-03", "nistCsf": "PR.IR-01", "cis": ["8.2.1"],
-      "remediation": [
-        "Teams admin center > Users > External access.",
-        "Set 'Choose which domains your users have access to' to 'Allow only specific external domains' (or block all external domains) and add approved partner domains.",
-        "Review which teams genuinely collaborate externally before restricting."
-      ]
-    },
-    {
-      "id": "TMS-002", "domain": "Microsoft Teams", "name": "Teams users can communicate with unmanaged (personal) Teams accounts", "severity": "Medium",
-      "scf": "NET-03", "nistCsf": "PR.IR-01", "cis": ["8.2.2", "8.2.3"],
-      "remediation": [
-        "Teams admin center > Users > External access.",
-        "Turn off 'People in my organization can communicate with Teams users whose accounts aren't managed by an organization'.",
-        "Turn off 'External users with Teams accounts not managed by an organization can contact users in my organization'."
-      ]
-    },
-    {
-      "id": "TMS-003", "domain": "Microsoft Teams", "name": "Teams allows communication with trial tenants", "severity": "Low",
-      "scf": "NET-03", "nistCsf": "PR.IR-01", "cis": ["8.2.4"],
-      "remediation": [
-        "Teams PowerShell: Set-CsTenantFederationConfiguration -ExternalAccessWithTrialTenants 'Blocked'.",
-        "Or Teams admin center > Users > External access > uncheck access to trial-only Microsoft 365 organisations."
-      ]
-    },
-    {
-      "id": "TMS-004", "domain": "Microsoft Teams", "name": "Anonymous users can join or start Teams meetings", "severity": "Medium",
-      "scf": "NET-03", "nistCsf": "PR.AA-05", "cis": ["8.5.1", "8.5.2"],
-      "remediation": [
-        "Teams admin center > Meetings > Meeting policies > Global (Org-wide default) > Meeting join & lobby.",
-        "Set 'Anonymous users can join a meeting' to Off and 'Anonymous users and dial-in callers can start a meeting' to Off."
-      ]
-    },
-    {
-      "id": "TMS-005", "domain": "Microsoft Teams", "name": "Teams lobby can be bypassed by external or dial-in users", "severity": "Medium",
-      "scf": "NET-03", "nistCsf": "PR.AA-05", "cis": ["8.5.3", "8.5.4"],
-      "remediation": [
-        "Teams admin center > Meetings > Meeting policies > Global > Meeting join & lobby.",
-        "Set 'Who can bypass the lobby' to 'People in my org' (or invited users / organisers only).",
-        "Set 'People dialing in can bypass the lobby' to Off."
-      ]
-    },
-    {
-      "id": "TMS-006", "domain": "Microsoft Teams", "name": "Anonymous users can use Teams meeting chat", "severity": "Low",
-      "scf": "NET-03", "nistCsf": "PR.DS-02", "cis": ["8.5.5"],
-      "remediation": [
-        "Teams admin center > Meetings > Meeting policies > Global > Meeting engagement.",
-        "Set 'Meeting chat' to 'On for everyone but anonymous users' (or more restrictive)."
-      ]
-    },
-    {
-      "id": "TMS-007", "domain": "Microsoft Teams", "name": "Anyone can present or external participants can take control in Teams meetings", "severity": "Low",
-      "scf": "NET-03", "nistCsf": "PR.AA-05", "cis": ["8.5.6", "8.5.7"],
-      "remediation": [
-        "Teams admin center > Meetings > Meeting policies > Global > Content sharing.",
-        "Set 'Who can present' to 'Only organizers and co-organizers' and 'External participants can give or request control' to Off."
-      ]
-    },
-    {
-      "id": "TMS-008", "domain": "Microsoft Teams", "name": "Third-party cloud storage enabled in Teams", "severity": "Medium",
-      "scf": "DCH-13", "nistCsf": "PR.DS-01", "cis": ["8.1.1"],
-      "remediation": [
-        "Teams admin center > Teams > Teams settings > Files.",
-        "Turn off every third-party storage provider (Dropbox, Box, Google Drive, ShareFile, Egnyte) that is not an approved service."
-      ]
-    },
-    {
-      "id": "TMS-009", "domain": "Microsoft Teams", "name": "Email into Teams channels allowed", "severity": "Low",
-      "scf": "DCH-13", "nistCsf": "PR.DS-02", "cis": ["8.1.2"],
-      "remediation": [
-        "Teams admin center > Teams > Teams settings > Email integration.",
-        "Turn off 'Users can send emails to a channel email address'."
-      ]
-    },
-    {
-      "id": "TMS-010", "domain": "Microsoft Teams", "name": "Users cannot report security concerns in Teams", "severity": "Low",
-      "scf": "IRO-10", "nistCsf": "DE.AE-02", "cis": ["8.6.1"],
-      "remediation": [
-        "Teams admin center > Messaging > Messaging policies > Global > Report a security concern = On.",
-        "Also enable user reported settings in the Defender portal so reports reach the security team."
-      ]
-    },
-    {
-      "id": "TMS-011", "domain": "Microsoft Teams", "name": "Teams meeting recording enabled by default", "severity": "Low",
-      "scf": "NET-03", "nistCsf": "PR.DS-02", "cis": ["8.5.9"],
-      "remediation": [
-        "Teams admin center > Meetings > Meeting policies > Global > Recording & transcription.",
-        "Turn off 'Meeting recording' in the Global policy and enable it only in a policy assigned to organisers who need it."
-      ]
-    },
-    {
-      "id": "SPO-001", "domain": "SharePoint", "name": "SharePoint external sharing allows anonymous 'Anyone' links", "severity": "High",
-      "scf": "DCH-13", "nistCsf": "PR.DS-01", "cis": ["7.2.3", "7.2.6"],
-      "remediation": [
-        "SharePoint admin center > Policies > Sharing.",
-        "Set the External sharing slider for SharePoint and OneDrive to 'New and existing guests' or more restrictive.",
-        "Use 'Anyone' links only on specific sites that need them, with expiry and view-only permission."
-      ]
-    },
-    {
-      "id": "SPO-002", "domain": "SharePoint", "name": "Guests can reshare SharePoint and OneDrive items they do not own", "severity": "Medium",
-      "scf": "DCH-13", "nistCsf": "PR.AA-05", "cis": ["7.2.5"],
-      "remediation": [
-        "SharePoint admin center > Policies > Sharing > More external sharing settings.",
-        "Tick 'Allow guests to share items they don't own' = Off (clear the box)."
-      ]
-    },
-    {
-      "id": "SPO-003", "domain": "SharePoint", "name": "External sharing is not limited to approved domains", "severity": "Medium",
-      "scf": "DCH-13", "nistCsf": "PR.IR-01", "cis": ["7.2.6"],
-      "remediation": [
-        "SharePoint admin center > Policies > Sharing > More external sharing settings.",
-        "Tick 'Limit external sharing by domain' and add the allowed (or blocked) domains."
-      ]
-    },
-    {
-      "id": "SPO-004", "domain": "SharePoint", "name": "Legacy authentication protocols enabled for SharePoint", "severity": "High",
-      "scf": "IAC-02", "nistCsf": "PR.AA-03", "cis": ["7.2.1"],
-      "remediation": [
-        "SharePoint admin center > Policies > Access control > Apps that don't use modern authentication = Block access.",
-        "Or: Set-SPOTenant -LegacyAuthProtocolsEnabled $false."
-      ]
-    },
-    {
-      "id": "SPO-005", "domain": "SharePoint", "name": "OneDrive sync allowed from unmanaged devices", "severity": "Medium",
-      "scf": "END-01", "nistCsf": "PR.PS-01",
-      "remediation": [
-        "SharePoint admin center > Settings > OneDrive - Sync > 'Allow syncing only on computers joined to specific domains'.",
-        "Add the Active Directory domain GUIDs, or require compliant devices with Conditional Access."
-      ]
-    },
-    {
-      "id": "ENT-USR-005", "domain": "Entra ID", "name": "Excessive number of Global Administrators", "severity": "Medium",
-      "scf": "IAC-21", "nistCsf": "PR.AA-05", "cis": ["1.1.3"],
-      "remediation": [
-        "Entra admin center > Roles & admins > Global Administrator > review each assignment.",
-        "Move delegated tasks to least-privileged roles (e.g. Exchange, SharePoint, User, Security Administrator).",
-        "Target fewer than 5 Global Administrators (including 2 break-glass accounts), all PIM-eligible."
-      ]
-    },
-    {
-      "id": "ENT-APP-001", "domain": "Entra ID", "name": "Expired application or service principal credentials", "severity": "Medium",
-      "scf": "IAC-10", "nistCsf": "PR.AA-01",
-      "remediation": [
-        "Entra admin center > App registrations (or Enterprise applications) > open each app > Certificates & secrets.",
-        "Delete expired secrets/certificates; if the app is still in use, rotate to a new credential first.",
-        "Prefer certificates or federated credentials / managed identities over client secrets; limit lifetime to 6-12 months.",
-        "Assign two owners per app so rotation reminders reach a person."
-      ]
-    },
-    {
-      "id": "ENT-APP-002", "domain": "Entra ID", "name": "Application credentials expiring soon", "severity": "Low",
-      "scf": "IAC-10", "nistCsf": "PR.AA-01",
-      "remediation": [
-        "Rotate the listed secrets/certificates before expiry (add new credential, update the consuming service, then remove the old one).",
-        "Set up Azure Monitor / Sentinel alerting or an automation on credential expiry.",
-        "Move to workload identity federation or managed identities where possible."
-      ]
-    },
-    {
-      "id": "ENT-APP-003", "domain": "Entra ID", "name": "Applications granted high-risk Microsoft Graph application permissions", "severity": "High",
-      "scf": "IAC-21", "nistCsf": "PR.AA-05",
-      "remediation": [
-        "Entra admin center > Enterprise applications > open the app > Permissions; review admin-consented application permissions.",
-        "Validate business need with the app owner; replace broad permissions (e.g. Directory.ReadWrite.All) with narrower alternatives or resource-specific consent (RSC / Sites.Selected).",
-        "Remove unused permissions and revoke admin consent for unknown apps.",
-        "Enable the admin consent workflow and restrict user consent (Enterprise applications > Consent and permissions)."
-      ]
-    },
-    {
-      "id": "ENT-GRP-001", "domain": "Entra ID", "name": "Guest accounts in role-assignable (privileged) groups", "severity": "High",
-      "scf": "IAC-17", "nistCsf": "PR.AA-05",
-      "remediation": [
-        "Entra admin center > Groups > open each listed group > Members; remove guest accounts unless there is a documented need.",
-        "Use Access Reviews on role-assignable groups with guests (Identity governance > Access reviews).",
-        "Restrict guest invitations (External Identities > External collaboration settings)."
-      ]
-    },
-    {
-      "id": "ENT-GRP-002", "domain": "Entra ID", "name": "Dynamic groups that automatically include guest accounts", "severity": "Low",
-      "scf": "IAC-17", "nistCsf": "PR.AA-05",
-      "remediation": [
-        "Review the membership rule of each listed group and confirm what resources the group grants access to (apps, Teams, SharePoint, roles).",
-        "Narrow rules to specific guest populations (domain / attribute) rather than all guests.",
-        "Add access reviews for groups that grant access to sensitive content."
-      ]
-    },
     {
       "id": "DEF-ALR-001", "domain": "Defender", "name": "Unresolved High severity security alerts", "severity": "High",
       "scf": "IRO-02", "nistCsf": "RS.MA-01",
@@ -344,15 +11,6 @@
         "Triage each alert: classify (true/false positive), assign an owner, and investigate or remediate.",
         "Enable automated investigation and response (AIR) and notification rules for high severity alerts.",
         "Resolve alerts with a classification so the queue reflects real exposure."
-      ]
-    },
-    {
-      "id": "DEF-INC-001", "domain": "Defender", "name": "Unresolved High/Medium severity incidents", "severity": "High",
-      "scf": "IRO-02", "nistCsf": "RS.MA-01",
-      "remediation": [
-        "Defender portal > Incidents & alerts > Incidents; filter Status = New / In progress.",
-        "Assign owners, prioritise by severity and affected assets, and document the investigation.",
-        "Define SLAs for incident triage; review long-running incidents weekly."
       ]
     },
     {
@@ -374,322 +32,12 @@
       ]
     },
     {
-      "id": "SSC-001", "domain": "Secure Score", "name": "Microsoft Secure Score below target", "severity": "Medium",
-      "scf": "CPL-03", "nistCsf": "ID.IM-01",
+      "id": "DEF-INC-001", "domain": "Defender", "name": "Unresolved High/Medium severity incidents", "severity": "High",
+      "scf": "IRO-02", "nistCsf": "RS.MA-01",
       "remediation": [
-        "Defender portal > Exposure management > Secure score; review Recommended actions sorted by points gained.",
-        "Prioritise actions with low user impact / low implementation cost first.",
-        "Track score movement monthly and record accepted-risk decisions."
-      ]
-    },
-    {
-      "id": "SSC-002", "domain": "Secure Score", "name": "Secure Score improvement actions not fully implemented", "severity": "Medium",
-      "scf": "CFG-02", "nistCsf": "PR.PS-01",
-      "remediation": [
-        "Defender portal > Exposure management > Secure score > Recommended actions.",
-        "Open each action, follow the 'Implementation' steps, and set status to Completed / Risk accepted / Third-party as applicable.",
-        "Batch changes that share a portal (e.g. Exchange Online / Entra) to reduce change windows."
-      ]
-    },
-    {
-      "id": "SSC-003", "domain": "Secure Score", "name": "High-value Secure Score actions not implemented", "severity": "High",
-      "scf": "CFG-02", "nistCsf": "PR.PS-01",
-      "remediation": [
-        "Treat these as the first remediation sprint: they carry the largest score gain.",
-        "Follow the implementation guidance linked in Secure score > Recommended actions for each control.",
-        "Pilot with a small group, communicate user impact, then roll out tenant-wide."
-      ]
-    },
-    {
-      "id": "ENT-POL-001", "domain": "Entra ID", "name": "Users can consent to any application (legacy user consent policy)", "severity": "High",
-      "scf": "IAC-20", "nistCsf": "PR.AA-05", "cis": ["5.1.5.1"], "license": "EntraP1",
-      "remediation": [
-        "Entra admin center > Enterprise applications > Consent and permissions > User consent settings.",
-        "Select 'Do not allow user consent' (preferred) or 'Allow user consent for apps from verified publishers, for selected permissions'.",
-        "Enable the admin consent workflow so users can request approval.",
-        "Review existing consented apps under Enterprise applications > Permissions and revoke unknown grants."
-      ]
-    },
-    {
-      "id": "ENT-POL-002", "domain": "Entra ID", "name": "Admin consent request workflow disabled", "severity": "Medium",
-      "scf": "IAC-20", "nistCsf": "PR.AA-05", "cis": ["5.1.5.2"],
-      "remediation": [
-        "Entra admin center > Enterprise applications > Consent and permissions > Admin consent settings.",
-        "Set 'Users can request admin consent to apps they are unable to consent to' = Yes.",
-        "Select reviewers (a small group of application/cloud application administrators) and set reminders and expiry."
-      ]
-    },
-    {
-      "id": "ENT-POL-003", "domain": "Entra ID", "name": "Unprivileged users can register applications or create tenants", "severity": "Medium",
-      "scf": "IAC-21", "nistCsf": "PR.AA-05", "cis": ["5.1.2.2", "5.1.2.3"],
-      "remediation": [
-        "Entra admin center > Identity > Users > User settings.",
-        "Set 'Users can register applications' = No and 'Restrict non-admin users from creating tenants' = Yes.",
-        "Delegate app registration to the Application Developer role for those who need it."
-      ]
-    },
-    {
-      "id": "ENT-POL-004", "domain": "Entra ID", "name": "Anyone, including guests, can invite external users", "severity": "Medium",
-      "scf": "IAC-17", "nistCsf": "PR.AA-05", "cis": ["5.1.6.3"],
-      "remediation": [
-        "Entra admin center > External Identities > External collaboration settings > Guest invite settings.",
-        "Choose 'Only users assigned to specific admin roles can invite guest users' (or members only for collaborative tenants).",
-        "Pair with access reviews for guests."
-      ]
-    },
-    {
-      "id": "ENT-POL-005", "domain": "Entra ID", "name": "Guest user access is as permissive as member access", "severity": "High",
-      "scf": "IAC-21", "nistCsf": "PR.AA-05", "cis": ["5.1.6.2"],
-      "remediation": [
-        "Entra admin center > External Identities > External collaboration settings > Guest user access.",
-        "Select 'Guest user access is restricted to properties and memberships of their own directory objects'.",
-        "Confirm no business process relies on guests enumerating the directory."
-      ]
-    },
-    {
-      "id": "ENT-APP-004", "domain": "Entra ID", "name": "Tenant-wide delegated consent granted for high-risk permissions", "severity": "High",
-      "scf": "IAC-21", "nistCsf": "PR.AA-05",
-      "remediation": [
-        "Entra admin center > Enterprise applications > open the app > Permissions > User consent / Admin consent tabs.",
-        "Revoke tenant-wide (AllPrincipals) grants for apps without a verified business need.",
-        "Replace broad scopes (Mail.ReadWrite, Files.ReadWrite.All, Directory.AccessAsUser.All) with narrower scopes.",
-        "Review sign-in logs of the app before revocation to avoid outages."
-      ]
-    },
-    {
-      "id": "ENT-AUTH-001", "domain": "Entra ID", "name": "Weak authentication methods (SMS / voice) enabled", "severity": "Medium",
-      "scf": "IAC-06", "nistCsf": "PR.AA-03", "cis": ["5.2.3.5"], "license": "EntraP1",
-      "remediation": [
-        "Entra admin center > Protection > Authentication methods > Policies.",
-        "Disable SMS and Voice call (or target them only to groups that genuinely need them).",
-        "Move users to Microsoft Authenticator (number matching) or FIDO2 first; use the registration campaign."
-      ]
-    },
-    {
-      "id": "ENT-AUTH-002", "domain": "Entra ID", "name": "Microsoft Authenticator disabled or number matching off", "severity": "Medium",
-      "scf": "IAC-06", "nistCsf": "PR.AA-03", "cis": ["5.2.3.1"],
-      "remediation": [
-        "Entra admin center > Protection > Authentication methods > Policies > Microsoft Authenticator.",
-        "Enable the method for all users and set 'Require number matching for push notifications' to Enabled.",
-        "Enable additional context (application name and location) to reduce MFA fatigue approvals."
-      ]
-    },
-    {
-      "id": "ENT-AUTH-003", "domain": "Entra ID", "name": "No phishing-resistant authentication method enabled (FIDO2 / certificate)", "severity": "Medium",
-      "scf": "IAC-06.1", "nistCsf": "PR.AA-03",
-      "remediation": [
-        "Entra admin center > Protection > Authentication methods > Policies > FIDO2 security key: Enable and target administrators first.",
-        "Optionally enable Certificate-based authentication; deploy Windows Hello for Business on managed devices.",
-        "Create an authentication strength requiring phishing-resistant MFA and use it in the admin Conditional Access policy."
-      ]
-    },
-    {
-      "id": "ENT-AUTH-004", "domain": "Entra ID", "name": "Custom banned password list not configured", "severity": "Medium",
-      "scf": "IAC-10.1", "nistCsf": "PR.AA-01", "cis": ["5.2.3.2"], "license": "EntraP1",
-      "remediation": [
-        "Entra admin center > Protection > Authentication methods > Password protection.",
-        "Set 'Enforce custom list' = Yes and add organisation-specific terms (company, product, location names).",
-        "Set mode to Enforced; for hybrid tenants also deploy the on-premises Password Protection agent."
-      ]
-    },
-    {
-      "id": "ENT-CA-005", "domain": "Entra ID", "name": "No Conditional Access policy requires a compliant or managed device", "severity": "Medium",
-      "scf": "IAC-04", "nistCsf": "PR.AA-03", "cis": ["5.2.2.9"], "license": "EntraP1",
-      "remediation": [
-        "Ensure devices are enrolled in Intune with a compliance policy. Do not enforce the policy before most devices are compliant, or users will be blocked.",
-        "If Security Defaults is enabled, disable it first: Conditional Access policies cannot be enforced alongside it.",
-        "Conditional Access > New policy > Users: All users; Target: Office 365 (or all apps); Grant: Require device to be marked as compliant (or Entra hybrid joined).",
-        "Start in report-only, exclude break-glass accounts, then enforce."
-      ]
-    },
-    {
-      "id": "ENT-CA-006", "domain": "Entra ID", "name": "No Conditional Access policy requires MFA for guest / external users", "severity": "High",
-      "scf": "IAC-06", "nistCsf": "PR.AA-03", "license": "EntraP1",
-      "remediation": [
-        "If Security Defaults is enabled, it applies MFA to guests only 'when necessary'. For guaranteed MFA, disable Security Defaults and use Conditional Access.",
-        "Conditional Access > New policy > Users > Include: Guest or external users (select all types).",
-        "Target resources: All cloud apps. Grant: Require multifactor authentication (or an authentication strength) as the ONLY grant control, or set the operator to 'Require all the selected controls'.",
-        "Configure cross-tenant access inbound trust to accept partner MFA if appropriate."
-      ]
-    },
-    {
-      "id": "ENT-CA-007", "domain": "Entra ID", "name": "No risk-based Conditional Access (sign-in risk / user risk)", "severity": "High",
-      "scf": "MON-16", "nistCsf": "DE.CM-03", "cis": ["5.2.2.6", "5.2.2.7", "5.2.2.8"], "license": "EntraP2",
-      "remediation": [
-        "Requires Entra ID P2 (Identity Protection). If Security Defaults is enabled, disable it first: Conditional Access policies cannot be enforced alongside it.",
-        "Conditional Access > New policy > Conditions > Sign-in risk: Medium and above > Grant: Require MFA.",
-        "Add a user-risk policy: High risk > Require password change + MFA (or block).",
-        "Review Identity Protection > Risky users / Risk detections weekly."
-      ]
-    },
-    {
-      "id": "ENT-CA-008", "domain": "Entra ID", "name": "No location-based access controls (named locations)", "severity": "Low",
-      "scf": "IAC-20", "nistCsf": "PR.AA-05", "cis": ["5.2.2.14"], "license": "EntraP1",
-      "remediation": [
-        "Conditional Access > Named locations: define trusted countries/IP ranges.",
-        "Create a policy blocking sign-ins from countries where you have no users or business.",
-        "Require MFA for sign-ins from untrusted locations."
-      ]
-    },
-    {
-      "id": "ENT-PIM-001", "domain": "Entra ID", "name": "Global Administrator activation settings are weak", "severity": "High",
-      "scf": "IAC-16", "nistCsf": "PR.AA-05", "cis": ["5.3.4"], "license": "EntraP2",
-      "remediation": [
-        "Entra admin center > Identity governance > Privileged Identity Management > Microsoft Entra roles > Settings > Global Administrator > Edit.",
-        "Activation: set a maximum duration of 8 hours or less, require MFA (or authentication context) and justification.",
-        "Require approval from a second administrator where staffing allows; enable activation notifications."
-      ]
-    },
-    {
-      "id": "ENT-EXT-001", "domain": "Entra ID", "name": "Cross-tenant access uses permissive defaults with no partner restrictions", "severity": "Low",
-      "scf": "IAC-20", "nistCsf": "PR.AA-05",
-      "remediation": [
-        "Entra admin center > External Identities > Cross-tenant access settings.",
-        "Add organisational settings for known partners; consider blocking inbound B2B collaboration by default and allow-listing partners.",
-        "Enable inbound trust for MFA / compliant device claims only for partners you trust."
-      ]
-    },
-    {
-      "id": "ENT-EXT-003", "domain": "Entra ID", "name": "Stale or unaccepted guest accounts", "severity": "Medium",
-      "scf": "IAC-15", "nistCsf": "PR.AA-05",
-      "remediation": [
-        "Entra admin center > Users > filter User type = Guest; review each listed account with the sponsor.",
-        "Delete invitations pending acceptance for more than 30 days and guests with no activity beyond your retention period.",
-        "Configure recurring access reviews for guests (Identity governance > Access reviews)."
-      ]
-    },
-    {
-      "id": "ENT-HYB-001", "domain": "Entra ID", "name": "Directory synchronisation is stale", "severity": "Medium",
-      "scf": "IAC-15", "nistCsf": "PR.AA-01",
-      "remediation": [
-        "On the Entra Connect server run Get-ADSyncScheduler and check SyncCycleEnabled and last run.",
-        "Review Entra admin center > Entra Connect > Connect Sync health and event logs for sync errors.",
-        "If Connect is decommissioned, disable directory synchronisation to avoid a stale source of authority."
-      ]
-    },
-    {
-      "id": "ENT-RISK-001", "domain": "Entra ID", "name": "Users currently flagged at risk by Identity Protection", "severity": "High",
-      "scf": "MON-16", "nistCsf": "DE.AE-02", "license": "EntraP2",
-      "remediation": [
-        "Entra admin center > Protection > Identity Protection > Risky users.",
-        "Investigate each at-risk user's risk detections; confirm compromise or dismiss with justification.",
-        "For confirmed compromise: reset credentials, revoke sessions, review recent activity and mail rules."
-      ]
-    },
-    {
-      "id": "ENT-GOV-001", "domain": "Entra ID", "name": "No access reviews configured", "severity": "Medium",
-      "scf": "IAC-17", "nistCsf": "PR.AA-05", "cis": ["5.3.2", "5.3.3"], "license": "EntraP2",
-      "remediation": [
-        "Entra admin center > Identity governance > Access reviews > New access review.",
-        "Start with privileged role assignments, guest users and groups that grant access to sensitive resources.",
-        "Set a quarterly recurrence, reviewers (managers / owners) and auto-apply results."
-      ]
-    },
-    {
-      "id": "ENT-GOV-002", "domain": "Entra ID", "name": "No Terms of Use configured", "severity": "Low",
-      "scf": "HRS-05", "nistCsf": "GV.PO-01", "license": "EntraP1",
-      "remediation": [
-        "Entra admin center > Identity governance > Terms of use > New terms.",
-        "Upload the acceptable-use document and require acceptance for guests via Conditional Access (Grant: Require terms of use)."
-      ]
-    },
-    {
-      "id": "LIC-001", "domain": "Licensing", "name": "No Microsoft Entra ID P1/P2 licensing in the tenant", "severity": "High",
-      "scf": "AST-02", "nistCsf": "ID.AM-02",
-      "remediation": [
-        "Microsoft 365 admin center > Billing > Licenses; confirm which SKUs are purchased and assigned.",
-        "Conditional Access, PIM, Identity Protection and access reviews require Entra ID P1/P2 (included in Microsoft 365 Business Premium / E3 / E5).",
-        "Without these, enable Security Defaults as a minimum baseline."
-      ]
-    },
-    {
-      "id": "EML-001", "domain": "Email Security", "name": "SPF missing or weak on email domains", "severity": "Medium",
-      "scf": "NET-12", "nistCsf": "PR.IR-01", "cis": ["2.1.8"],
-      "remediation": [
-        "DNS provider > add a single TXT record at the domain apex: v=spf1 include:spf.protection.outlook.com -all (plus any other legitimate senders).",
-        "Remove duplicate SPF records (only one is valid) and avoid +all / ?all.",
-        "Keep DNS lookups at 10 or fewer."
-      ]
-    },
-    {
-      "id": "EML-002", "domain": "Email Security", "name": "DMARC missing or monitoring-only (p=none)", "severity": "High",
-      "scf": "NET-12", "nistCsf": "PR.IR-01", "cis": ["2.1.10"],
-      "remediation": [
-        "DNS provider > add TXT record _dmarc.<domain>: v=DMARC1; p=none; rua=mailto:dmarc-reports@<domain> to start monitoring.",
-        "Review aggregate reports, fix legitimate senders, then move to p=quarantine and finally p=reject.",
-        "Publish DMARC for every sending and non-sending domain (non-sending: v=DMARC1; p=reject)."
-      ]
-    },
-    {
-      "id": "EML-003", "domain": "Email Security", "name": "DKIM signing not configured for Exchange Online domains", "severity": "Medium",
-      "scf": "NET-12", "nistCsf": "PR.IR-01", "cis": ["2.1.9"],
-      "remediation": [
-        "Defender portal > Email & collaboration > Policies & rules > Threat policies > Email authentication settings > DKIM.",
-        "Select the domain, create DKIM keys and publish the two CNAME records (selector1/selector2._domainkey) at your DNS provider.",
-        "Return to the portal and enable signing for the domain."
-      ]
-    },
-    {
-      "id": "ENT-POL-006", "domain": "Entra ID", "name": "No baseline sign-in protection: Security Defaults off and no all-user MFA policy", "severity": "High",
-      "scf": "IAC-06", "nistCsf": "PR.AA-03",
-      "remediation": [
-        "Either enable Security Defaults: Entra admin center > Identity > Overview > Properties > Manage security defaults > Enabled.",
-        "Or (recommended where licensed) create a Conditional Access policy: Users = All users (exclude break-glass), Target = All cloud apps, Grant = Require multifactor authentication.",
-        "Do not run Security Defaults and Conditional Access together: Conditional Access replaces Security Defaults."
-      ]
-    },
-    {
-      "id": "ENT-POL-007", "domain": "Entra ID", "name": "Self-service password reset is not enabled", "severity": "Medium",
-      "scf": "IAC-10", "nistCsf": "PR.AA-01",
-      "remediation": [
-        "Entra admin center > Protection > Password reset > Properties: set 'Self service password reset enabled' to All (or a pilot group first).",
-        "Authentication methods: require 2 methods to reset and register users via the combined security information experience.",
-        "Note: this check reads the tenant-level flag only; confirm the All/Selected scope in the portal."
-      ]
-    },
-    {
-      "id": "ENT-AUTH-005", "domain": "Entra ID", "name": "Smart lockout threshold above 10 failed sign-ins", "severity": "Medium",
-      "scf": "IAC-22", "nistCsf": "PR.AA-03",
-      "remediation": [
-        "Entra admin center > Protection > Authentication methods > Password protection.",
-        "Set 'Lockout threshold' to 10 or fewer failed sign-ins (the default is 10).",
-        "Keep 'Lockout duration in seconds' at 60 or more."
-      ]
-    },
-    {
-      "id": "ENT-AUTH-006", "domain": "Entra ID", "name": "Smart lockout duration below 60 seconds", "severity": "Low",
-      "scf": "IAC-22", "nistCsf": "PR.AA-03",
-      "remediation": [
-        "Entra admin center > Protection > Authentication methods > Password protection.",
-        "Set 'Lockout duration in seconds' to 60 or more (the default is 60); longer slows password-spray attempts."
-      ]
-    },
-    {
-      "id": "ENT-AUTH-007", "domain": "Entra ID", "name": "Password expiration policy enabled (not set to never expire)", "severity": "Low",
-      "scf": "IAC-10.1", "nistCsf": "PR.AA-01",
-      "remediation": [
-        "Microsoft 365 admin center > Settings > Org settings > Security & privacy > Password expiration policy.",
-        "Select 'Set passwords to never expire' and rely on MFA, banned passwords and risk-based sign-in controls (NIST SP 800-63B guidance).",
-        "Force a reset only on evidence of compromise."
-      ]
-    },
-    {
-      "id": "ENT-GRP-003", "domain": "Entra ID", "name": "Public Microsoft 365 groups exist (review for approval)", "severity": "Low",
-      "scf": "DCH-13", "nistCsf": "PR.AA-05",
-      "remediation": [
-        "Microsoft 365 admin center > Teams & groups > Active teams & groups > filter Privacy = Public.",
-        "For each group confirm it is meant to be discoverable and joinable by anyone in the organisation; change others to Private.",
-        "Restrict who may create groups (Entra admin center > Groups > General) and review group ownership."
-      ]
-    },
-    {
-      "id": "ENT-CA-009", "domain": "Entra ID", "name": "Fewer than two emergency (break-glass) access accounts identified", "severity": "Medium",
-      "scf": "BCD-01", "nistCsf": "PR.IR-03",
-      "remediation": [
-        "Manual review: confirm which Global Administrators are meant to be break-glass accounts (the tool only nominates accounts excluded from Conditional Access).",
-        "Create two cloud-only accounts (on the *.onmicrosoft.com domain or a custom domain, per your standard) with permanent Global Administrator and long random passwords stored offline.",
-        "Exclude both from every Conditional Access policy (directly or through a dedicated group).",
-        "Alert on any sign-in by these accounts and test them at least twice a year."
+        "Defender portal > Incidents & alerts > Incidents; filter Status = New / In progress.",
+        "Assign owners, prioritise by severity and affected assets, and document the investigation.",
+        "Define SLAs for incident triage; review long-running incidents weekly."
       ]
     },
     {
@@ -818,6 +166,500 @@
       ]
     },
     {
+      "id": "EML-001", "domain": "Email Security", "name": "SPF missing or weak on email domains", "severity": "Medium",
+      "scf": "NET-12", "nistCsf": "PR.IR-01", "cis": ["2.1.8"],
+      "remediation": [
+        "DNS provider > add a single TXT record at the domain apex: v=spf1 include:spf.protection.outlook.com -all (plus any other legitimate senders).",
+        "Remove duplicate SPF records (only one is valid) and avoid +all / ?all.",
+        "Keep DNS lookups at 10 or fewer."
+      ]
+    },
+    {
+      "id": "EML-002", "domain": "Email Security", "name": "DMARC missing or monitoring-only (p=none)", "severity": "High",
+      "scf": "NET-12", "nistCsf": "PR.IR-01", "cis": ["2.1.10"],
+      "remediation": [
+        "DNS provider > add TXT record _dmarc.<domain>: v=DMARC1; p=none; rua=mailto:dmarc-reports@<domain> to start monitoring.",
+        "Review aggregate reports, fix legitimate senders, then move to p=quarantine and finally p=reject.",
+        "Publish DMARC for every sending and non-sending domain (non-sending: v=DMARC1; p=reject)."
+      ]
+    },
+    {
+      "id": "EML-003", "domain": "Email Security", "name": "DKIM signing not configured for Exchange Online domains", "severity": "Medium",
+      "scf": "NET-12", "nistCsf": "PR.IR-01", "cis": ["2.1.9"],
+      "remediation": [
+        "Defender portal > Email & collaboration > Policies & rules > Threat policies > Email authentication settings > DKIM.",
+        "Select the domain, create DKIM keys and publish the two CNAME records (selector1/selector2._domainkey) at your DNS provider.",
+        "Return to the portal and enable signing for the domain."
+      ]
+    },
+    {
+      "id": "ENT-APP-001", "domain": "Entra ID", "name": "Expired application or service principal credentials", "severity": "Medium",
+      "scf": "IAC-10", "nistCsf": "PR.AA-01",
+      "remediation": [
+        "Entra admin center > App registrations (or Enterprise applications) > open each app > Certificates & secrets.",
+        "Delete expired secrets/certificates; if the app is still in use, rotate to a new credential first.",
+        "Prefer certificates or federated credentials / managed identities over client secrets; limit lifetime to 6-12 months.",
+        "Assign two owners per app so rotation reminders reach a person."
+      ]
+    },
+    {
+      "id": "ENT-APP-002", "domain": "Entra ID", "name": "Application credentials expiring soon", "severity": "Low",
+      "scf": "IAC-10", "nistCsf": "PR.AA-01",
+      "remediation": [
+        "Rotate the listed secrets/certificates before expiry (add new credential, update the consuming service, then remove the old one).",
+        "Set up Azure Monitor / Sentinel alerting or an automation on credential expiry.",
+        "Move to workload identity federation or managed identities where possible."
+      ]
+    },
+    {
+      "id": "ENT-APP-003", "domain": "Entra ID", "name": "Applications granted high-risk Microsoft Graph application permissions", "severity": "High",
+      "scf": "IAC-21", "nistCsf": "PR.AA-05",
+      "remediation": [
+        "Entra admin center > Enterprise applications > open the app > Permissions; review admin-consented application permissions.",
+        "Validate business need with the app owner; replace broad permissions (e.g. Directory.ReadWrite.All) with narrower alternatives or resource-specific consent (RSC / Sites.Selected).",
+        "Remove unused permissions and revoke admin consent for unknown apps.",
+        "Enable the admin consent workflow and restrict user consent (Enterprise applications > Consent and permissions)."
+      ]
+    },
+    {
+      "id": "ENT-APP-004", "domain": "Entra ID", "name": "Tenant-wide delegated consent granted for high-risk permissions", "severity": "High",
+      "scf": "IAC-21", "nistCsf": "PR.AA-05",
+      "remediation": [
+        "Entra admin center > Enterprise applications > open the app > Permissions > User consent / Admin consent tabs.",
+        "Revoke tenant-wide (AllPrincipals) grants for apps without a verified business need.",
+        "Replace broad scopes (Mail.ReadWrite, Files.ReadWrite.All, Directory.AccessAsUser.All) with narrower scopes.",
+        "Review sign-in logs of the app before revocation to avoid outages."
+      ]
+    },
+    {
+      "id": "ENT-AUTH-001", "domain": "Entra ID", "name": "Weak authentication methods (SMS / voice) enabled", "severity": "Medium",
+      "scf": "IAC-06", "nistCsf": "PR.AA-03", "cis": ["5.2.3.5"], "license": "EntraP1",
+      "remediation": [
+        "Entra admin center > Protection > Authentication methods > Policies.",
+        "Disable SMS and Voice call (or target them only to groups that genuinely need them).",
+        "Move users to Microsoft Authenticator (number matching) or FIDO2 first; use the registration campaign."
+      ]
+    },
+    {
+      "id": "ENT-AUTH-002", "domain": "Entra ID", "name": "Microsoft Authenticator disabled or number matching off", "severity": "Medium",
+      "scf": "IAC-06", "nistCsf": "PR.AA-03", "cis": ["5.2.3.1"],
+      "remediation": [
+        "Entra admin center > Protection > Authentication methods > Policies > Microsoft Authenticator.",
+        "Enable the method for all users and set 'Require number matching for push notifications' to Enabled.",
+        "Enable additional context (application name and location) to reduce MFA fatigue approvals."
+      ]
+    },
+    {
+      "id": "ENT-AUTH-003", "domain": "Entra ID", "name": "No phishing-resistant authentication method enabled (FIDO2 / certificate)", "severity": "Medium",
+      "scf": "IAC-06.1", "nistCsf": "PR.AA-03",
+      "remediation": [
+        "Entra admin center > Protection > Authentication methods > Policies > FIDO2 security key: Enable and target administrators first.",
+        "Optionally enable Certificate-based authentication; deploy Windows Hello for Business on managed devices.",
+        "Create an authentication strength requiring phishing-resistant MFA and use it in the admin Conditional Access policy."
+      ]
+    },
+    {
+      "id": "ENT-AUTH-004", "domain": "Entra ID", "name": "Custom banned password list not configured", "severity": "Medium",
+      "scf": "IAC-10.1", "nistCsf": "PR.AA-01", "cis": ["5.2.3.2"], "license": "EntraP1",
+      "remediation": [
+        "Entra admin center > Protection > Authentication methods > Password protection.",
+        "Set 'Enforce custom list' = Yes and add organisation-specific terms (company, product, location names).",
+        "Set mode to Enforced; for hybrid tenants also deploy the on-premises Password Protection agent."
+      ]
+    },
+    {
+      "id": "ENT-AUTH-005", "domain": "Entra ID", "name": "Smart lockout threshold above 10 failed sign-ins", "severity": "Medium",
+      "scf": "IAC-22", "nistCsf": "PR.AA-03",
+      "remediation": [
+        "Entra admin center > Protection > Authentication methods > Password protection.",
+        "Set 'Lockout threshold' to 10 or fewer failed sign-ins (the default is 10).",
+        "Keep 'Lockout duration in seconds' at 60 or more."
+      ]
+    },
+    {
+      "id": "ENT-AUTH-006", "domain": "Entra ID", "name": "Smart lockout duration below 60 seconds", "severity": "Low",
+      "scf": "IAC-22", "nistCsf": "PR.AA-03",
+      "remediation": [
+        "Entra admin center > Protection > Authentication methods > Password protection.",
+        "Set 'Lockout duration in seconds' to 60 or more (the default is 60); longer slows password-spray attempts."
+      ]
+    },
+    {
+      "id": "ENT-AUTH-007", "domain": "Entra ID", "name": "Password expiration policy enabled (not set to never expire)", "severity": "Low",
+      "scf": "IAC-10.1", "nistCsf": "PR.AA-01",
+      "remediation": [
+        "Microsoft 365 admin center > Settings > Org settings > Security & privacy > Password expiration policy.",
+        "Select 'Set passwords to never expire' and rely on MFA, banned passwords and risk-based sign-in controls (NIST SP 800-63B guidance).",
+        "Force a reset only on evidence of compromise."
+      ]
+    },
+    {
+      "id": "ENT-CA-001", "domain": "Entra ID", "name": "Conditional Access policies in report-only mode", "severity": "Medium",
+      "scf": "IAC-20", "nistCsf": "PR.AA-05",
+      "remediation": [
+        "Entra admin center > Protection > Conditional Access > Policies.",
+        "Open each policy listed and review the report-only results under Insights and reporting.",
+        "If Security Defaults is enabled, disable it first (Entra admin center > Overview > Properties > Manage security defaults): Conditional Access policies cannot be enforced alongside it, so re-create its protections (admin MFA, all-user MFA, legacy block) as policies before turning it off.",
+        "When the impact is understood and break-glass accounts are excluded, set 'Enable policy' to On.",
+        "Retire report-only policies that are no longer needed."
+      ]
+    },
+    {
+      "id": "ENT-CA-002", "domain": "Entra ID", "name": "All-user Conditional Access policy without emergency (break-glass) exclusions", "severity": "High",
+      "scf": "BCD-01", "nistCsf": "PR.IR-03",
+      "remediation": [
+        "Create at least two cloud-only emergency access accounts (excluded from MFA-dependent policies, strong passwords stored offline).",
+        "Put them in a dedicated security group, e.g. 'CA-BreakGlass-Exclude'.",
+        "Entra admin center > Conditional Access > open each affected policy > Users > Exclude > select the group.",
+        "Alert on any sign-in by these accounts (Log Analytics / Sentinel / Defender XDR custom detection)."
+      ]
+    },
+    {
+      "id": "ENT-CA-003", "domain": "Entra ID", "name": "No Conditional Access policy blocking legacy authentication", "severity": "High",
+      "scf": "CFG-03", "nistCsf": "PR.AA-03", "cis": ["5.2.2.3"],
+      "remediation": [
+        "Entra admin center > Sign-in logs > filter Client app = legacy clients to find dependent apps first.",
+        "Conditional Access > New policy > Users: All users (exclude break-glass).",
+        "Target resources: All cloud apps. Conditions > Client apps: Exchange ActiveSync clients + Other clients.",
+        "Grant: Block access. Start in report-only, then enforce."
+      ]
+    },
+    {
+      "id": "ENT-CA-004", "domain": "Entra ID", "name": "No enforced Conditional Access policy requiring MFA for administrators", "severity": "Critical",
+      "scf": "IAC-06", "nistCsf": "PR.AA-03", "cis": ["5.2.2.1"],
+      "remediation": [
+        "Conditional Access > New policy > Users: Directory roles (select all privileged roles) or All users.",
+        "Target resources: All cloud apps (or at minimum Microsoft Admin Portals).",
+        "Grant: Require authentication strength (Phishing-resistant MFA) or Require multifactor authentication.",
+        "Exclude break-glass accounts; test in report-only; enable."
+      ]
+    },
+    {
+      "id": "ENT-CA-005", "domain": "Entra ID", "name": "No Conditional Access policy requires a compliant or managed device", "severity": "Medium",
+      "scf": "IAC-04", "nistCsf": "PR.AA-03", "cis": ["5.2.2.9"], "license": "EntraP1",
+      "remediation": [
+        "Ensure devices are enrolled in Intune with a compliance policy. Do not enforce the policy before most devices are compliant, or users will be blocked.",
+        "If Security Defaults is enabled, disable it first: Conditional Access policies cannot be enforced alongside it.",
+        "Conditional Access > New policy > Users: All users; Target: Office 365 (or all apps); Grant: Require device to be marked as compliant (or Entra hybrid joined).",
+        "Start in report-only, exclude break-glass accounts, then enforce."
+      ]
+    },
+    {
+      "id": "ENT-CA-006", "domain": "Entra ID", "name": "No Conditional Access policy requires MFA for guest / external users", "severity": "High",
+      "scf": "IAC-06", "nistCsf": "PR.AA-03", "license": "EntraP1",
+      "remediation": [
+        "If Security Defaults is enabled, it applies MFA to guests only 'when necessary'. For guaranteed MFA, disable Security Defaults and use Conditional Access.",
+        "Conditional Access > New policy > Users > Include: Guest or external users (select all types).",
+        "Target resources: All cloud apps. Grant: Require multifactor authentication (or an authentication strength) as the ONLY grant control, or set the operator to 'Require all the selected controls'.",
+        "Configure cross-tenant access inbound trust to accept partner MFA if appropriate."
+      ]
+    },
+    {
+      "id": "ENT-CA-007", "domain": "Entra ID", "name": "No risk-based Conditional Access (sign-in risk / user risk)", "severity": "High",
+      "scf": "MON-16", "nistCsf": "DE.CM-03", "cis": ["5.2.2.6", "5.2.2.7", "5.2.2.8"], "license": "EntraP2",
+      "remediation": [
+        "Requires Entra ID P2 (Identity Protection). If Security Defaults is enabled, disable it first: Conditional Access policies cannot be enforced alongside it.",
+        "Conditional Access > New policy > Conditions > Sign-in risk: Medium and above > Grant: Require MFA.",
+        "Add a user-risk policy: High risk > Require password change + MFA (or block).",
+        "Review Identity Protection > Risky users / Risk detections weekly."
+      ]
+    },
+    {
+      "id": "ENT-CA-008", "domain": "Entra ID", "name": "No location-based access controls (named locations)", "severity": "Low",
+      "scf": "IAC-20", "nistCsf": "PR.AA-05", "cis": ["5.2.2.14"], "license": "EntraP1",
+      "remediation": [
+        "Conditional Access > Named locations: define trusted countries/IP ranges.",
+        "Create a policy blocking sign-ins from countries where you have no users or business.",
+        "Require MFA for sign-ins from untrusted locations."
+      ]
+    },
+    {
+      "id": "ENT-CA-009", "domain": "Entra ID", "name": "Fewer than two emergency (break-glass) access accounts identified", "severity": "Medium",
+      "scf": "BCD-01", "nistCsf": "PR.IR-03",
+      "remediation": [
+        "Manual review: confirm which Global Administrators are meant to be break-glass accounts (the tool only nominates accounts excluded from Conditional Access).",
+        "Create two cloud-only accounts (on the *.onmicrosoft.com domain or a custom domain, per your standard) with permanent Global Administrator and long random passwords stored offline.",
+        "Exclude both from every Conditional Access policy (directly or through a dedicated group).",
+        "Alert on any sign-in by these accounts and test them at least twice a year."
+      ]
+    },
+    {
+      "id": "ENT-EXT-001", "domain": "Entra ID", "name": "Cross-tenant access uses permissive defaults with no partner restrictions", "severity": "Low",
+      "scf": "IAC-20", "nistCsf": "PR.AA-05",
+      "remediation": [
+        "Entra admin center > External Identities > Cross-tenant access settings.",
+        "Add organisational settings for known partners; consider blocking inbound B2B collaboration by default and allow-listing partners.",
+        "Enable inbound trust for MFA / compliant device claims only for partners you trust."
+      ]
+    },
+    {
+      "id": "ENT-EXT-003", "domain": "Entra ID", "name": "Stale or unaccepted guest accounts", "severity": "Medium",
+      "scf": "IAC-15", "nistCsf": "PR.AA-05",
+      "remediation": [
+        "Entra admin center > Users > filter User type = Guest; review each listed account with the sponsor.",
+        "Delete invitations pending acceptance for more than 30 days and guests with no activity beyond your retention period.",
+        "Configure recurring access reviews for guests (Identity governance > Access reviews)."
+      ]
+    },
+    {
+      "id": "ENT-GOV-001", "domain": "Entra ID", "name": "No access reviews configured", "severity": "Medium",
+      "scf": "IAC-17", "nistCsf": "PR.AA-05", "cis": ["5.3.2", "5.3.3"], "license": "EntraP2",
+      "remediation": [
+        "Entra admin center > Identity governance > Access reviews > New access review.",
+        "Start with privileged role assignments, guest users and groups that grant access to sensitive resources.",
+        "Set a quarterly recurrence, reviewers (managers / owners) and auto-apply results."
+      ]
+    },
+    {
+      "id": "ENT-GOV-002", "domain": "Entra ID", "name": "No Terms of Use configured", "severity": "Low",
+      "scf": "HRS-05", "nistCsf": "GV.PO-01", "license": "EntraP1",
+      "remediation": [
+        "Entra admin center > Identity governance > Terms of use > New terms.",
+        "Upload the acceptable-use document and require acceptance for guests via Conditional Access (Grant: Require terms of use)."
+      ]
+    },
+    {
+      "id": "ENT-GRP-001", "domain": "Entra ID", "name": "Guest accounts in role-assignable (privileged) groups", "severity": "High",
+      "scf": "IAC-17", "nistCsf": "PR.AA-05",
+      "remediation": [
+        "Entra admin center > Groups > open each listed group > Members; remove guest accounts unless there is a documented need.",
+        "Use Access Reviews on role-assignable groups with guests (Identity governance > Access reviews).",
+        "Restrict guest invitations (External Identities > External collaboration settings)."
+      ]
+    },
+    {
+      "id": "ENT-GRP-002", "domain": "Entra ID", "name": "Dynamic groups that automatically include guest accounts", "severity": "Low",
+      "scf": "IAC-17", "nistCsf": "PR.AA-05",
+      "remediation": [
+        "Review the membership rule of each listed group and confirm what resources the group grants access to (apps, Teams, SharePoint, roles).",
+        "Narrow rules to specific guest populations (domain / attribute) rather than all guests.",
+        "Add access reviews for groups that grant access to sensitive content."
+      ]
+    },
+    {
+      "id": "ENT-GRP-003", "domain": "Entra ID", "name": "Public Microsoft 365 groups exist (review for approval)", "severity": "Low",
+      "scf": "DCH-13", "nistCsf": "PR.AA-05",
+      "remediation": [
+        "Microsoft 365 admin center > Teams & groups > Active teams & groups > filter Privacy = Public.",
+        "For each group confirm it is meant to be discoverable and joinable by anyone in the organisation; change others to Private.",
+        "Restrict who may create groups (Entra admin center > Groups > General) and review group ownership."
+      ]
+    },
+    {
+      "id": "ENT-HYB-001", "domain": "Entra ID", "name": "Directory synchronisation is stale", "severity": "Medium",
+      "scf": "IAC-15", "nistCsf": "PR.AA-01",
+      "remediation": [
+        "On the Entra Connect server run Get-ADSyncScheduler and check SyncCycleEnabled and last run.",
+        "Review Entra admin center > Entra Connect > Connect Sync health and event logs for sync errors.",
+        "If Connect is decommissioned, disable directory synchronisation to avoid a stale source of authority."
+      ]
+    },
+    {
+      "id": "ENT-PIM-001", "domain": "Entra ID", "name": "Global Administrator activation settings are weak", "severity": "High",
+      "scf": "IAC-16", "nistCsf": "PR.AA-05", "cis": ["5.3.4"], "license": "EntraP2",
+      "remediation": [
+        "Entra admin center > Identity governance > Privileged Identity Management > Microsoft Entra roles > Settings > Global Administrator > Edit.",
+        "Activation: set a maximum duration of 8 hours or less, require MFA (or authentication context) and justification.",
+        "Require approval from a second administrator where staffing allows; enable activation notifications."
+      ]
+    },
+    {
+      "id": "ENT-POL-001", "domain": "Entra ID", "name": "Users can consent to any application (legacy user consent policy)", "severity": "High",
+      "scf": "IAC-20", "nistCsf": "PR.AA-05", "cis": ["5.1.5.1"], "license": "EntraP1",
+      "remediation": [
+        "Entra admin center > Enterprise applications > Consent and permissions > User consent settings.",
+        "Select 'Do not allow user consent' (preferred) or 'Allow user consent for apps from verified publishers, for selected permissions'.",
+        "Enable the admin consent workflow so users can request approval.",
+        "Review existing consented apps under Enterprise applications > Permissions and revoke unknown grants."
+      ]
+    },
+    {
+      "id": "ENT-POL-002", "domain": "Entra ID", "name": "Admin consent request workflow disabled", "severity": "Medium",
+      "scf": "IAC-20", "nistCsf": "PR.AA-05", "cis": ["5.1.5.2"],
+      "remediation": [
+        "Entra admin center > Enterprise applications > Consent and permissions > Admin consent settings.",
+        "Set 'Users can request admin consent to apps they are unable to consent to' = Yes.",
+        "Select reviewers (a small group of application/cloud application administrators) and set reminders and expiry."
+      ]
+    },
+    {
+      "id": "ENT-POL-003", "domain": "Entra ID", "name": "Unprivileged users can register applications or create tenants", "severity": "Medium",
+      "scf": "IAC-21", "nistCsf": "PR.AA-05", "cis": ["5.1.2.2", "5.1.2.3"],
+      "remediation": [
+        "Entra admin center > Identity > Users > User settings.",
+        "Set 'Users can register applications' = No and 'Restrict non-admin users from creating tenants' = Yes.",
+        "Delegate app registration to the Application Developer role for those who need it."
+      ]
+    },
+    {
+      "id": "ENT-POL-004", "domain": "Entra ID", "name": "Anyone, including guests, can invite external users", "severity": "Medium",
+      "scf": "IAC-17", "nistCsf": "PR.AA-05", "cis": ["5.1.6.3"],
+      "remediation": [
+        "Entra admin center > External Identities > External collaboration settings > Guest invite settings.",
+        "Choose 'Only users assigned to specific admin roles can invite guest users' (or members only for collaborative tenants).",
+        "Pair with access reviews for guests."
+      ]
+    },
+    {
+      "id": "ENT-POL-005", "domain": "Entra ID", "name": "Guest user access is as permissive as member access", "severity": "High",
+      "scf": "IAC-21", "nistCsf": "PR.AA-05", "cis": ["5.1.6.2"],
+      "remediation": [
+        "Entra admin center > External Identities > External collaboration settings > Guest user access.",
+        "Select 'Guest user access is restricted to properties and memberships of their own directory objects'.",
+        "Confirm no business process relies on guests enumerating the directory."
+      ]
+    },
+    {
+      "id": "ENT-POL-006", "domain": "Entra ID", "name": "No baseline sign-in protection: Security Defaults off and no all-user MFA policy", "severity": "High",
+      "scf": "IAC-06", "nistCsf": "PR.AA-03",
+      "remediation": [
+        "Either enable Security Defaults: Entra admin center > Identity > Overview > Properties > Manage security defaults > Enabled.",
+        "Or (recommended where licensed) create a Conditional Access policy: Users = All users (exclude break-glass), Target = All cloud apps, Grant = Require multifactor authentication.",
+        "Do not run Security Defaults and Conditional Access together: Conditional Access replaces Security Defaults."
+      ]
+    },
+    {
+      "id": "ENT-POL-007", "domain": "Entra ID", "name": "Self-service password reset is not enabled", "severity": "Medium",
+      "scf": "IAC-10", "nistCsf": "PR.AA-01",
+      "remediation": [
+        "Entra admin center > Protection > Password reset > Properties: set 'Self service password reset enabled' to All (or a pilot group first).",
+        "Authentication methods: require 2 methods to reset and register users via the combined security information experience.",
+        "Note: this check reads the tenant-level flag only; confirm the All/Selected scope in the portal."
+      ]
+    },
+    {
+      "id": "ENT-RISK-001", "domain": "Entra ID", "name": "Users currently flagged at risk by Identity Protection", "severity": "High",
+      "scf": "MON-16", "nistCsf": "DE.AE-02", "license": "EntraP2",
+      "remediation": [
+        "Entra admin center > Protection > Identity Protection > Risky users.",
+        "Investigate each at-risk user's risk detections; confirm compromise or dismiss with justification.",
+        "For confirmed compromise: reset credentials, revoke sessions, review recent activity and mail rules."
+      ]
+    },
+    {
+      "id": "ENT-USR-001", "domain": "Entra ID", "name": "Privileged roles assigned permanently (not managed with PIM)", "severity": "High",
+      "scf": "IAC-16", "nistCsf": "PR.AA-05", "cis": ["5.3.1"],
+      "remediation": [
+        "Entra admin center > Identity governance > Privileged Identity Management > Microsoft Entra roles > Assignments.",
+        "For each permanent active assignment: Add assignment as Eligible, then remove the permanent Active assignment.",
+        "Configure role settings: require MFA and justification on activation, set a maximum activation duration, require approval for Global Administrator.",
+        "Keep only the break-glass accounts as permanent Global Administrators."
+      ]
+    },
+    {
+      "id": "ENT-USR-002", "domain": "Entra ID", "name": "Stale enabled accounts (no sign-in for extended period)", "severity": "Medium",
+      "scf": "IAC-15", "nistCsf": "PR.AA-05",
+      "remediation": [
+        "Entra admin center > Users > All users > review each listed account with its owner/manager.",
+        "Block sign-in for confirmed unused accounts (Properties > Account enabled = No), then delete after the retention period.",
+        "Automate with Identity Governance Access Reviews or Lifecycle Workflows (leaver / inactivity).",
+        "Service and shared accounts: assign owners and exclude them only with documented justification."
+      ]
+    },
+    {
+      "id": "ENT-USR-003", "domain": "Entra ID", "name": "Member users not registered for MFA", "severity": "High",
+      "scf": "IAC-06", "nistCsf": "PR.AA-03", "cis": ["5.2.3.4"],
+      "remediation": [
+        "Entra admin center > Protection > Authentication methods > User registration details (filter MFA registered = No).",
+        "Enable the Microsoft Authenticator / FIDO2 methods and the registration campaign (Authentication methods > Registration campaign).",
+        "Create a Conditional Access policy 'Require MFA registration' (User action: Register security information) and a policy requiring MFA for all users.",
+        "Follow up with users who remain unregistered; disable accounts that are unused."
+      ]
+    },
+    {
+      "id": "ENT-USR-004", "domain": "Entra ID", "name": "Administrator accounts not registered for MFA", "severity": "Critical",
+      "scf": "IAC-06.1", "nistCsf": "PR.AA-03",
+      "remediation": [
+        "Contact each admin in the list and require registration of phishing-resistant MFA (FIDO2 key / Windows Hello / certificate-based auth).",
+        "Enforce the admin MFA Conditional Access policy so admins are prompted to register at next sign-in.",
+        "Use dedicated cloud-only admin accounts separate from day-to-day mailbox accounts."
+      ]
+    },
+    {
+      "id": "ENT-USR-005", "domain": "Entra ID", "name": "Excessive number of Global Administrators", "severity": "Medium",
+      "scf": "IAC-21", "nistCsf": "PR.AA-05", "cis": ["1.1.3"],
+      "remediation": [
+        "Entra admin center > Roles & admins > Global Administrator > review each assignment.",
+        "Move delegated tasks to least-privileged roles (e.g. Exchange, SharePoint, User, Security Administrator).",
+        "Target fewer than 5 Global Administrators (including 2 break-glass accounts), all PIM-eligible."
+      ]
+    },
+    {
+      "id": "ENT-USR-006", "domain": "Entra ID", "name": "Stale eligible privileged role assignments", "severity": "Medium",
+      "scf": "IAC-17", "nistCsf": "PR.AA-05",
+      "remediation": [
+        "Entra admin center > Identity governance > Privileged Identity Management > Microsoft Entra roles > Assignments > Eligible assignments.",
+        "Remove eligible assignments for disabled or inactive accounts, or confirm each one with the role owner.",
+        "Set an expiry on eligible assignments and configure PIM access reviews (quarterly) for privileged roles."
+      ]
+    },
+    {
+      "id": "EXO-001", "domain": "Exchange Online", "name": "Mail auto-forwarding not blocked", "severity": "High",
+      "scf": "NET-12", "nistCsf": "PR.DS-02", "cis": ["6.2.1"],
+      "remediation": [
+        "Microsoft Defender portal > Email & collaboration > Policies > Anti-spam > Anti-spam outbound policy (Default).",
+        "Set 'Automatic forwarding' to Off - Forwarding is disabled.",
+        "For each mailbox listed with forwarding, remove the forwarding address (Exchange admin center > Recipients > Mailboxes > Manage mail flow settings)."
+      ]
+    },
+    {
+      "id": "EXO-002", "domain": "Exchange Online", "name": "Mailbox auditing disabled organization-wide", "severity": "High",
+      "scf": "MON-03", "nistCsf": "DE.CM-03", "cis": ["6.1.1"],
+      "remediation": [
+        "Exchange Online PowerShell: Set-OrganizationConfig -AuditDisabled $false.",
+        "Confirm with Get-OrganizationConfig | Format-List AuditDisabled."
+      ]
+    },
+    {
+      "id": "EXO-003", "domain": "Exchange Online", "name": "Modern authentication disabled for Exchange Online", "severity": "High",
+      "scf": "IAC-02", "nistCsf": "PR.AA-03", "cis": ["6.5.1"],
+      "remediation": [
+        "Exchange Online PowerShell: Set-OrganizationConfig -OAuth2ClientProfileEnabled $true.",
+        "Update any legacy Outlook clients before enforcing."
+      ]
+    },
+    {
+      "id": "EXO-004", "domain": "Exchange Online", "name": "SMTP AUTH enabled tenant-wide", "severity": "Medium",
+      "scf": "CFG-03", "nistCsf": "PR.PS-01", "cis": ["6.5.4"],
+      "remediation": [
+        "Exchange admin center > Settings > Mail flow > tick 'Turn off SMTP AUTH protocol for your organization' (or: Set-TransportConfig -SmtpClientAuthenticationDisabled $true).",
+        "Enable SMTP AUTH per mailbox only for devices that cannot use OAuth (Set-CASMailbox -SmtpClientAuthenticationDisabled $false)."
+      ]
+    },
+    {
+      "id": "EXO-005", "domain": "Exchange Online", "name": "Shared mailboxes allow direct sign-in", "severity": "Medium",
+      "scf": "IAC-15", "nistCsf": "PR.AA-01", "cis": ["1.2.2"],
+      "remediation": [
+        "Microsoft 365 admin center > Users > Active users > select the shared mailbox account > Block sign-in.",
+        "Or: Set-MgUser -UserId <id> -AccountEnabled:$false."
+      ]
+    },
+    {
+      "id": "EXO-006", "domain": "Exchange Online", "name": "No custom anti-phishing policy", "severity": "Medium",
+      "scf": "NET-12", "nistCsf": "DE.CM-09", "cis": ["2.1.7"],
+      "remediation": [
+        "Microsoft Defender portal > Email & collaboration > Policies > Threat policies > Anti-phishing > Create policy.",
+        "Enable impersonation protection for key users and domains, mailbox intelligence, and a phishing threshold of 2 or higher; apply to all recipient domains."
+      ]
+    },
+    {
+      "id": "EXO-007", "domain": "Exchange Online", "name": "Safe Links not enabled for email, Office and Teams", "severity": "Medium",
+      "scf": "NET-12", "nistCsf": "DE.CM-09", "cis": ["2.1.1"],
+      "remediation": [
+        "Microsoft Defender portal > Email & collaboration > Policies > Threat policies > Safe Links.",
+        "Create or edit a policy enabling Safe Links for email, Office applications and Teams; turn on real-time URL scanning and do-not-track disabled."
+      ]
+    },
+    {
+      "id": "LIC-001", "domain": "Licensing", "name": "No Microsoft Entra ID P1/P2 licensing in the tenant", "severity": "High",
+      "scf": "AST-02", "nistCsf": "ID.AM-02",
+      "remediation": [
+        "Microsoft 365 admin center > Billing > Licenses; confirm which SKUs are purchased and assigned.",
+        "Conditional Access, PIM, Identity Protection and access reviews require Entra ID P1/P2 (included in Microsoft 365 Business Premium / E3 / E5).",
+        "Without these, enable Security Defaults as a minimum baseline."
+      ]
+    },
+    {
       "id": "PUR-001", "domain": "Microsoft Purview", "name": "Unified audit log ingestion is turned off", "severity": "High",
       "scf": "MON-03", "nistCsf": "PR.PS-04",
       "remediation": [
@@ -869,6 +711,165 @@
         "Requires a Microsoft Purview premium licence (for example Microsoft 365 E5 or the Insider Risk add-on).",
         "Purview portal > Solutions > Insider risk management: configure settings, then create a policy from a template (for example data leaks or departing employees).",
         "Agree privacy and HR review procedures before turning policies on."
+      ]
+    },
+    {
+      "id": "SPO-001", "domain": "SharePoint", "name": "SharePoint external sharing allows anonymous 'Anyone' links", "severity": "High",
+      "scf": "DCH-13", "nistCsf": "PR.DS-01", "cis": ["7.2.3", "7.2.6"],
+      "remediation": [
+        "SharePoint admin center > Policies > Sharing.",
+        "Set the External sharing slider for SharePoint and OneDrive to 'New and existing guests' or more restrictive.",
+        "Use 'Anyone' links only on specific sites that need them, with expiry and view-only permission."
+      ]
+    },
+    {
+      "id": "SPO-002", "domain": "SharePoint", "name": "Guests can reshare SharePoint and OneDrive items they do not own", "severity": "Medium",
+      "scf": "DCH-13", "nistCsf": "PR.AA-05", "cis": ["7.2.5"],
+      "remediation": [
+        "SharePoint admin center > Policies > Sharing > More external sharing settings.",
+        "Tick 'Allow guests to share items they don't own' = Off (clear the box)."
+      ]
+    },
+    {
+      "id": "SPO-003", "domain": "SharePoint", "name": "External sharing is not limited to approved domains", "severity": "Medium",
+      "scf": "DCH-13", "nistCsf": "PR.IR-01", "cis": ["7.2.6"],
+      "remediation": [
+        "SharePoint admin center > Policies > Sharing > More external sharing settings.",
+        "Tick 'Limit external sharing by domain' and add the allowed (or blocked) domains."
+      ]
+    },
+    {
+      "id": "SPO-004", "domain": "SharePoint", "name": "Legacy authentication protocols enabled for SharePoint", "severity": "High",
+      "scf": "IAC-02", "nistCsf": "PR.AA-03", "cis": ["7.2.1"],
+      "remediation": [
+        "SharePoint admin center > Policies > Access control > Apps that don't use modern authentication = Block access.",
+        "Or: Set-SPOTenant -LegacyAuthProtocolsEnabled $false."
+      ]
+    },
+    {
+      "id": "SPO-005", "domain": "SharePoint", "name": "OneDrive sync allowed from unmanaged devices", "severity": "Medium",
+      "scf": "END-01", "nistCsf": "PR.PS-01",
+      "remediation": [
+        "SharePoint admin center > Settings > OneDrive - Sync > 'Allow syncing only on computers joined to specific domains'.",
+        "Add the Active Directory domain GUIDs, or require compliant devices with Conditional Access."
+      ]
+    },
+    {
+      "id": "SSC-001", "domain": "Secure Score", "name": "Microsoft Secure Score below target", "severity": "Medium",
+      "scf": "CPL-03", "nistCsf": "ID.IM-01",
+      "remediation": [
+        "Defender portal > Exposure management > Secure score; review Recommended actions sorted by points gained.",
+        "Prioritise actions with low user impact / low implementation cost first.",
+        "Track score movement monthly and record accepted-risk decisions."
+      ]
+    },
+    {
+      "id": "SSC-002", "domain": "Secure Score", "name": "Secure Score improvement actions not fully implemented", "severity": "Medium",
+      "scf": "CFG-02", "nistCsf": "PR.PS-01",
+      "remediation": [
+        "Defender portal > Exposure management > Secure score > Recommended actions.",
+        "Open each action, follow the 'Implementation' steps, and set status to Completed / Risk accepted / Third-party as applicable.",
+        "Batch changes that share a portal (e.g. Exchange Online / Entra) to reduce change windows."
+      ]
+    },
+    {
+      "id": "SSC-003", "domain": "Secure Score", "name": "High-value Secure Score actions not implemented", "severity": "High",
+      "scf": "CFG-02", "nistCsf": "PR.PS-01",
+      "remediation": [
+        "Treat these as the first remediation sprint: they carry the largest score gain.",
+        "Follow the implementation guidance linked in Secure score > Recommended actions for each control.",
+        "Pilot with a small group, communicate user impact, then roll out tenant-wide."
+      ]
+    },
+    {
+      "id": "TMS-001", "domain": "Microsoft Teams", "name": "Teams external federation open to all domains", "severity": "Medium",
+      "scf": "NET-03", "nistCsf": "PR.IR-01", "cis": ["8.2.1"],
+      "remediation": [
+        "Teams admin center > Users > External access.",
+        "Set 'Choose which domains your users have access to' to 'Allow only specific external domains' (or block all external domains) and add approved partner domains.",
+        "Review which teams genuinely collaborate externally before restricting."
+      ]
+    },
+    {
+      "id": "TMS-002", "domain": "Microsoft Teams", "name": "Teams users can communicate with unmanaged (personal) Teams accounts", "severity": "Medium",
+      "scf": "NET-03", "nistCsf": "PR.IR-01", "cis": ["8.2.2", "8.2.3"],
+      "remediation": [
+        "Teams admin center > Users > External access.",
+        "Turn off 'People in my organization can communicate with Teams users whose accounts aren't managed by an organization'.",
+        "Turn off 'External users with Teams accounts not managed by an organization can contact users in my organization'."
+      ]
+    },
+    {
+      "id": "TMS-003", "domain": "Microsoft Teams", "name": "Teams allows communication with trial tenants", "severity": "Low",
+      "scf": "NET-03", "nistCsf": "PR.IR-01", "cis": ["8.2.4"],
+      "remediation": [
+        "Teams PowerShell: Set-CsTenantFederationConfiguration -ExternalAccessWithTrialTenants 'Blocked'.",
+        "Or Teams admin center > Users > External access > uncheck access to trial-only Microsoft 365 organisations."
+      ]
+    },
+    {
+      "id": "TMS-004", "domain": "Microsoft Teams", "name": "Anonymous users can join or start Teams meetings", "severity": "Medium",
+      "scf": "NET-03", "nistCsf": "PR.AA-05", "cis": ["8.5.1", "8.5.2"],
+      "remediation": [
+        "Teams admin center > Meetings > Meeting policies > Global (Org-wide default) > Meeting join & lobby.",
+        "Set 'Anonymous users can join a meeting' to Off and 'Anonymous users and dial-in callers can start a meeting' to Off."
+      ]
+    },
+    {
+      "id": "TMS-005", "domain": "Microsoft Teams", "name": "Teams lobby can be bypassed by external or dial-in users", "severity": "Medium",
+      "scf": "NET-03", "nistCsf": "PR.AA-05", "cis": ["8.5.3", "8.5.4"],
+      "remediation": [
+        "Teams admin center > Meetings > Meeting policies > Global > Meeting join & lobby.",
+        "Set 'Who can bypass the lobby' to 'People in my org' (or invited users / organisers only).",
+        "Set 'People dialing in can bypass the lobby' to Off."
+      ]
+    },
+    {
+      "id": "TMS-006", "domain": "Microsoft Teams", "name": "Anonymous users can use Teams meeting chat", "severity": "Low",
+      "scf": "NET-03", "nistCsf": "PR.DS-02", "cis": ["8.5.5"],
+      "remediation": [
+        "Teams admin center > Meetings > Meeting policies > Global > Meeting engagement.",
+        "Set 'Meeting chat' to 'On for everyone but anonymous users' (or more restrictive)."
+      ]
+    },
+    {
+      "id": "TMS-007", "domain": "Microsoft Teams", "name": "Anyone can present or external participants can take control in Teams meetings", "severity": "Low",
+      "scf": "NET-03", "nistCsf": "PR.AA-05", "cis": ["8.5.6", "8.5.7"],
+      "remediation": [
+        "Teams admin center > Meetings > Meeting policies > Global > Content sharing.",
+        "Set 'Who can present' to 'Only organizers and co-organizers' and 'External participants can give or request control' to Off."
+      ]
+    },
+    {
+      "id": "TMS-008", "domain": "Microsoft Teams", "name": "Third-party cloud storage enabled in Teams", "severity": "Medium",
+      "scf": "DCH-13", "nistCsf": "PR.DS-01", "cis": ["8.1.1"],
+      "remediation": [
+        "Teams admin center > Teams > Teams settings > Files.",
+        "Turn off every third-party storage provider (Dropbox, Box, Google Drive, ShareFile, Egnyte) that is not an approved service."
+      ]
+    },
+    {
+      "id": "TMS-009", "domain": "Microsoft Teams", "name": "Email into Teams channels allowed", "severity": "Low",
+      "scf": "DCH-13", "nistCsf": "PR.DS-02", "cis": ["8.1.2"],
+      "remediation": [
+        "Teams admin center > Teams > Teams settings > Email integration.",
+        "Turn off 'Users can send emails to a channel email address'."
+      ]
+    },
+    {
+      "id": "TMS-010", "domain": "Microsoft Teams", "name": "Users cannot report security concerns in Teams", "severity": "Low",
+      "scf": "IRO-10", "nistCsf": "DE.AE-02", "cis": ["8.6.1"],
+      "remediation": [
+        "Teams admin center > Messaging > Messaging policies > Global > Report a security concern = On.",
+        "Also enable user reported settings in the Defender portal so reports reach the security team."
+      ]
+    },
+    {
+      "id": "TMS-011", "domain": "Microsoft Teams", "name": "Teams meeting recording enabled by default", "severity": "Low",
+      "scf": "NET-03", "nistCsf": "PR.DS-02", "cis": ["8.5.9"],
+      "remediation": [
+        "Teams admin center > Meetings > Meeting policies > Global > Recording & transcription.",
+        "Turn off 'Meeting recording' in the Global policy and enable it only in a policy assigned to organisers who need it."
       ]
     }
   ]

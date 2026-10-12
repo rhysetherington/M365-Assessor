@@ -163,8 +163,40 @@ Invoke-M365SecurityReview -Environment USGov -TenantId contoso.us -Domain Licens
 
 ## Extending
 
-1. Add an entry to `Data/ControlMapping.json` (id, severity, SCF, NIST CSF, remediation).
-2. Emit it from a collector with `New-Finding -Id <id> -Status Gap|Pass -AffectedObjects ...` inside `Invoke-Collector`.
+### Add a check
+
+1. **Add a mapping entry** to `Data/ControlMapping.json`, in id order (the tests enforce order and numbering):
+   `id` (like `ENT-CA-010`), `domain`, `name` (phrased as the problem), `severity` (Critical, High, Medium, Low),
+   `scf`, `nistCsf` and at least two `remediation` steps. Optional: `cis` (CIS recommendation numbers, only where the check clearly tests
+   the same setting) and `license` (`EntraP1`, `EntraP2`, `Intune`, `DefenderO365` or `DefenderEndpoint`: a refused call is then reported with the
+   missing licence). Ids are never reused: a reserved but unused number goes in `retiredIds`.
+2. **Emit it from a collector** inside `Invoke-Collector` so a refused call, a missing licence or an absent cmdlet becomes a NotAssessed
+   finding with a reason instead of aborting the run:
+   `New-Finding -Id <id> -Status Gap|Pass|NotAssessed -AffectedObjects ... -Detail ...`. Unknown or unreadable data must be
+   NotAssessed, never Pass. Use only `GET` calls and `Get-*` cmdlets.
+3. **Test it** with the offline fakes (below), including the Pass, Gap and unreadable cases.
+4. **Regenerate the coverage document**: `pwsh ./Docs/Update-Coverage.ps1`.
+
+### Add a domain
+
+A domain is a collector function plus its wiring: add the value to `-Domain` on `Invoke-M365SecurityReview` (the `ValidateSet` and a
+`switch` case that calls your collector), a row in the Coverage table above, and a console rule in `Docs/Update-Coverage.ps1`. Domains that need the
+Exchange or Security & Compliance PowerShell sessions use `Start-ExchangeSession` / `Start-ComplianceSession` (one sign-in per tenant,
+shared between domains, closed by the review cmdlet), keep the check logic in a separate function so tests can drive it without a connection,
+and are opt-in. Report builders (`New-AssessmentMarkdown`, `New-AssessmentHtml`) and other helpers belong in `Private/`: `Public/` holds only the
+exported cmdlets, one per file.
+
+### Test it
+
+```powershell
+Invoke-Pester ./Tests          # offline: no tenant, no sign-in, about a minute
+pwsh ./Docs/Update-Coverage.ps1   # after changing the mapping or a domain
+```
+
+`Tests/Support/FakeGraph.ps1` replaces the Graph request functions with a fixture-driven fake, and `Tests/Support/FakeCmdlets.ps1` defines fake
+Exchange, compliance and Teams cmdlets. The suite checks mapping integrity (formats, sorted ids, no unexplained numbering gaps), the module layout,
+that every domain is wired, and that `Docs/Coverage.md` matches what the generator produces. When you add a test, break the code once and
+confirm the test fails: a test that cannot fail proves nothing. Variables set in Pester's `BeforeDiscovery` are not visible inside `It` blocks.
 
 ## Notes and limits
 
