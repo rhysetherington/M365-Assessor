@@ -14,7 +14,7 @@ Effort: S = under half a day, M = 1-2 days, L = several days.
 | # | Item | Status | Notes |
 |---|---|---|---|
 | 1 | Missing Graph-only CIS checks | **Done**, live-verified | `ENT-POL-006/007`, `ENT-AUTH-005/006/007`, `ENT-GRP-003`, `ENT-CA-009`. No CIS numbers on these entries (numbering could not be verified). |
-| 2 | Exchange and SharePoint gaps | **Done**; `EXO-008` not yet live-tested | Audit log (`PUR-001`), OneDrive sync (`SPO-005`) and Outlook on the web storage providers (`EXO-008`, CIS 6.5.3) covered. `EXO-008` is tested offline only; whether Global Reader can read `Get-OwaMailboxPolicy` is unconfirmed (if not, it reports NotAssessed with the reason). |
+| 2 | Exchange and SharePoint gaps | **Done**, live-verified | Audit log (`PUR-001`), OneDrive sync (`SPO-005`) and Outlook on the web storage providers (`EXO-008`, CIS 6.5.3) covered. `EXO-008` was run live as Global Reader on 2026-10-12: the role can read `Get-OwaMailboxPolicy`, and the test tenant's default policy allows additional storage providers (a real Gap). |
 | 3 | Evidence files | **Done**, live-verified | `-IncludeEvidence`; formula injection tested offline only (no live item started with `=+-@`). |
 | 4 | CIS view | **Done**, live-verified | `-CisView`. **No L1/L2 level**: the mapping has no level data. |
 | 5 | CIS coverage generator | **Not started** | Needs the licensed CIS benchmark list as input. |
@@ -73,7 +73,7 @@ This is an estimate by title, not a CIS benchmark score: M365SAT ships only abou
 | Emergency access accounts exist | CA exclusions plus permanent Global Administrators | `ENT-CA-009` (nominates; a person confirms) |
 
 ### 2. Exchange and SharePoint gaps (M): done
-Audit log search enabled, OneDrive sync restrictions and Outlook on the web storage providers (`EXO-008`) are covered. `EXO-008` still needs a live run to confirm Global Reader can read the policy.
+Audit log search enabled, OneDrive sync restrictions and Outlook on the web storage providers (`EXO-008`) are covered. Live-verified as Global Reader.
 
 ### 3. Evidence files (M): done
 `-IncludeEvidence` writes `evidence/<FindingId>.csv` and `evidence/_index.csv`, linked from the reports, no tenant ID, formula-injection neutralised, folder 700 and files 600.
@@ -102,6 +102,6 @@ Opt-in `Azure` domain with read-only checks (Defender for Cloud plans, storage p
 - Credentials as command-line parameters (keep certificate, device code and interactive).
 
 ## 6. Suggested order from here
-1. Live-check `EXO-008` with the next Exchange run, then build the CIS coverage generator.
+1. CIS coverage generator.
 2. Report layout fix for narrow screens.
 3. Live tests in a sovereign cloud when a tenant is available, then the Azure domain once the dependency decision is made.
