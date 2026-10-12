@@ -79,6 +79,8 @@ personal Microsoft accounts are rejected. For app-only use, grant the equivalent
 
 ## Coverage
 
+For the full list of checks by administration console, and what is **not** covered yet, see [`Docs/Coverage.md`](../Docs/Coverage.md).
+
 | `-Domain` | Checks |
 |---|---|
 | `Licensing` | Reads `subscribedSkus`; flags a tenant with no Entra ID P1/P2. Also explains NotAssessed results caused by a missing licence. |
