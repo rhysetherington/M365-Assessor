@@ -24,6 +24,27 @@ BeforeDiscovery {
         @{ Name = 'TMS-008 gap: Dropbox allowed';                         Id = 'TMS-008'; Status = 'Gap';  Patch = @{ Client = @{ AllowDropBox = $true } } }
         @{ Name = 'TMS-009 gap: email into channels allowed';             Id = 'TMS-009'; Status = 'Gap';  Patch = @{ Client = @{ AllowEmailIntoChannel = $true } } }
         @{ Name = 'TMS-010 gap: users cannot report security concerns';   Id = 'TMS-010'; Status = 'Gap';  Patch = @{ Messaging = @{ AllowSecurityEndUserReporting = $false } } }
+        # An unreadable setting is never a pass: NotAssessed unless a setting that WAS returned already makes it a Gap
+        @{ Name = 'TMS-001 NotAssessed: AllowFederatedUsers not returned';          Id = 'TMS-001'; Status = 'NotAssessed'; Patch = @{ Federation = @{ AllowFederatedUsers = $null } } }
+        @{ Name = 'TMS-001 NotAssessed: federation on but AllowedDomains not returned'; Id = 'TMS-001'; Status = 'NotAssessed'; Patch = @{ Federation = @{ AllowedDomains = $null } } }
+        @{ Name = 'TMS-001 pass: federation off, so AllowedDomains does not matter'; Id = 'TMS-001'; Status = 'Pass'; Patch = @{ Federation = @{ AllowFederatedUsers = $false; AllowedDomains = $null } } }
+        @{ Name = 'TMS-002 NotAssessed: both settings not returned';                Id = 'TMS-002'; Status = 'NotAssessed'; Patch = @{ Federation = @{ AllowTeamsConsumer = $null; AllowTeamsConsumerInbound = $null } } }
+        @{ Name = 'TMS-002 NotAssessed: one off, the other not returned';           Id = 'TMS-002'; Status = 'NotAssessed'; Patch = @{ Federation = @{ AllowTeamsConsumerInbound = $null } } }
+        @{ Name = 'TMS-002 gap: one on, the other not returned';                    Id = 'TMS-002'; Status = 'Gap'; Patch = @{ Federation = @{ AllowTeamsConsumer = $true; AllowTeamsConsumerInbound = $null } } }
+        @{ Name = 'TMS-003 NotAssessed: trial tenant setting not returned';         Id = 'TMS-003'; Status = 'NotAssessed'; Patch = @{ Federation = @{ ExternalAccessWithTrialTenants = $null } } }
+        @{ Name = 'TMS-004 NotAssessed: one setting not returned';                  Id = 'TMS-004'; Status = 'NotAssessed'; Patch = @{ Meeting = @{ AllowAnonymousUsersToJoinMeeting = $null } } }
+        @{ Name = 'TMS-004 gap: one on, the other not returned';                    Id = 'TMS-004'; Status = 'Gap'; Patch = @{ Meeting = @{ AllowAnonymousUsersToJoinMeeting = $true; AllowAnonymousUsersToStartMeeting = $null } } }
+        @{ Name = 'TMS-005 NotAssessed: who bypasses the lobby not returned';       Id = 'TMS-005'; Status = 'NotAssessed'; Patch = @{ Meeting = @{ AutoAdmittedUsers = $null } } }
+        @{ Name = 'TMS-005 gap: everyone bypasses, dial-in setting not returned';   Id = 'TMS-005'; Status = 'Gap'; Patch = @{ Meeting = @{ AutoAdmittedUsers = 'Everyone'; AllowPSTNUsersToBypassLobby = $null } } }
+        @{ Name = 'TMS-005 gap: dial-in bypass on, lobby setting not returned';     Id = 'TMS-005'; Status = 'Gap'; Patch = @{ Meeting = @{ AutoAdmittedUsers = $null; AllowPSTNUsersToBypassLobby = $true } } }
+        @{ Name = 'TMS-006 NotAssessed: meeting chat type not returned';            Id = 'TMS-006'; Status = 'NotAssessed'; Patch = @{ Meeting = @{ MeetingChatEnabledType = $null } } }
+        @{ Name = 'TMS-007 NotAssessed: presenter mode not returned';               Id = 'TMS-007'; Status = 'NotAssessed'; Patch = @{ Meeting = @{ DesignatedPresenterRoleMode = $null } } }
+        @{ Name = 'TMS-007 gap: external control on, presenter mode not returned';  Id = 'TMS-007'; Status = 'Gap'; Patch = @{ Meeting = @{ DesignatedPresenterRoleMode = $null; AllowExternalParticipantGiveRequestControl = $true } } }
+        @{ Name = 'TMS-011 NotAssessed: cloud recording setting not returned';      Id = 'TMS-011'; Status = 'NotAssessed'; Patch = @{ Meeting = @{ AllowCloudRecording = $null } } }
+        @{ Name = 'TMS-008 NotAssessed: one provider setting not returned';         Id = 'TMS-008'; Status = 'NotAssessed'; Patch = @{ Client = @{ AllowEgnyte = $null } } }
+        @{ Name = 'TMS-008 gap: Dropbox on, another provider not returned';         Id = 'TMS-008'; Status = 'Gap'; Patch = @{ Client = @{ AllowDropBox = $true; AllowEgnyte = $null } } }
+        @{ Name = 'TMS-009 NotAssessed: email into channels not returned';          Id = 'TMS-009'; Status = 'NotAssessed'; Patch = @{ Client = @{ AllowEmailIntoChannel = $null } } }
+        @{ Name = 'TMS-010 NotAssessed: reporting setting not returned (was a gap)'; Id = 'TMS-010'; Status = 'NotAssessed'; Patch = @{ Messaging = @{ AllowSecurityEndUserReporting = $null } } }
     )
 }
 
@@ -71,6 +92,19 @@ Describe 'Teams checks' {
         $r = Invoke-Teams
         $r.Keys.Count | Should -Be 12
         ($r.Values | Where-Object Status -ne 'Pass' | ForEach-Object { "$($_.FindingId)=$($_.Status)" }) | Should -BeNullOrEmpty
+    }
+
+    It 'a NotAssessed result names the setting that was not returned' {
+        $f = (Invoke-Teams -Patch @{ Meeting = @{ AllowCloudRecording = $null } })['TMS-011']
+        $f.Status | Should -Be 'NotAssessed'
+        $f.Detail | Should -BeLike '*AllowCloudRecording was not returned*cannot be shown to be safe*'
+    }
+
+    It 'a Gap still says when another setting could not be read' {
+        $f = (Invoke-Teams -Patch @{ Client = @{ AllowDropBox = $true; AllowEgnyte = $null } })['TMS-008']
+        $f.Status | Should -Be 'Gap'
+        @($f.AffectedObjects) | Should -Be @('DropBox')
+        $f.Detail | Should -BeLike '*AllowEgnyte was not returned and could not be evaluated*'
     }
 
     It 'TMS-012 names the setting in its detail' {

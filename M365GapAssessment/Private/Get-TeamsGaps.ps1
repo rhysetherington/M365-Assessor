@@ -45,6 +45,37 @@ function Get-TeamsGaps {
     }
 }
 
+function Get-UnreturnedProperties {
+    # Names from the list that the object did not return (null or absent). Such a setting is unknown, which is not the same as off.
+    param($Object, [string[]]$Names)
+    @($Names | Where-Object { $null -eq $Object.$_ })
+}
+
+function New-SettingFinding {
+    <#
+    .SYNOPSIS
+        One finding from a setting check. A Gap when a setting that WAS returned is wrong; a Pass only when every setting the check
+        needs was returned and is fine; otherwise NotAssessed, because a setting that could not be read cannot be shown to be safe.
+    #>
+    param(
+        [Parameter(Mandatory)][string]$Id,
+        [Parameter(Mandatory)][bool]$Gap,
+        [string[]]$Affected = @(),
+        [string[]]$Unreturned = @(),
+        [Parameter(Mandatory)][string]$Detail
+    )
+    if ($Gap) {
+        $text = if ($Unreturned.Count) { "$Detail $($Unreturned -join ', ') was not returned and could not be evaluated." } else { $Detail }
+        New-Finding -Id $Id -Status Gap -AffectedObjects $Affected -Detail $text
+    }
+    elseif ($Unreturned.Count) {
+        New-Finding -Id $Id -Status NotAssessed -Detail "$Detail $($Unreturned -join ', ') was not returned, so the setting cannot be shown to be safe."
+    }
+    else {
+        New-Finding -Id $Id -Status Pass -AffectedObjects $Affected -Detail $Detail
+    }
+}
+
 function Invoke-TeamsChecks {
     # The checks themselves: assumes a Teams PowerShell session is already open (tests supply fake cmdlets instead).
     [CmdletBinding()]
@@ -52,67 +83,74 @@ function Invoke-TeamsChecks {
 
     Invoke-Collector -Name 'Teams external access' -FindingIds 'TMS-001', 'TMS-002', 'TMS-003' -Script {
         $fed = Get-CsTenantFederationConfiguration
+
+        # TMS-001: federation open to all domains. AllowedDomains only matters while federation is on.
+        $federationOn = [bool]$fed.AllowFederatedUsers
+        $unknown = @(Get-UnreturnedProperties $fed 'AllowFederatedUsers')
+        if ($federationOn) { $unknown += Get-UnreturnedProperties $fed 'AllowedDomains' }
         $domains = @($fed.AllowedDomains.AllowedDomain | Where-Object { $_ })
         # AllowedDomains is an "AllowAllKnownDomains" object when federation is open, or a list of specific domains.
-        $open = $fed.AllowFederatedUsers -and ($fed.AllowedDomains -is [string] -or $fed.AllowedDomains.GetType().Name -match 'AllowAll' -or -not $domains.Count)
-        New-Finding -Id 'TMS-001' -Status $(if ($open) { 'Gap' } else { 'Pass' }) `
-            -AffectedObjects $(if ($open) { 'External federation allows all domains' } else { @() }) `
+        $open = $federationOn -and $null -ne $fed.AllowedDomains -and ($fed.AllowedDomains -is [string] -or $fed.AllowedDomains.GetType().Name -match 'AllowAll' -or -not $domains.Count)
+        New-SettingFinding -Id 'TMS-001' -Gap $open -Unreturned $unknown `
+            -Affected $(if ($open) { 'External federation allows all domains' } else { @() }) `
             -Detail "AllowFederatedUsers = $($fed.AllowFederatedUsers); $($domains.Count) specifically allowed domain(s)."
+
+        # TMS-002: unmanaged (personal) Teams accounts.
         $consumer = @(if ($fed.AllowTeamsConsumer) { 'Users can communicate with unmanaged Teams (personal) accounts' }; if ($fed.AllowTeamsConsumerInbound) { 'Unmanaged Teams users can initiate conversations' })
-        New-Finding -Id 'TMS-002' -Status $(if ($consumer.Count) { 'Gap' } else { 'Pass' }) -AffectedObjects $consumer `
+        New-SettingFinding -Id 'TMS-002' -Gap ($consumer.Count -gt 0) -Affected $consumer -Unreturned (Get-UnreturnedProperties $fed 'AllowTeamsConsumer', 'AllowTeamsConsumerInbound') `
             -Detail "AllowTeamsConsumer = $($fed.AllowTeamsConsumer); AllowTeamsConsumerInbound = $($fed.AllowTeamsConsumerInbound)."
-        New-Finding -Id 'TMS-003' -Status $(if ($fed.ExternalAccessWithTrialTenants -eq 'Blocked') { 'Pass' } else { 'Gap' }) `
-            -Detail "ExternalAccessWithTrialTenants = $($fed.ExternalAccessWithTrialTenants)."
+
+        # TMS-003: trial tenants.
+        $trial = $fed.ExternalAccessWithTrialTenants
+        New-SettingFinding -Id 'TMS-003' -Gap ($null -ne $trial -and "$trial" -ne 'Blocked') -Unreturned (Get-UnreturnedProperties $fed 'ExternalAccessWithTrialTenants') `
+            -Detail "ExternalAccessWithTrialTenants = $trial."
     }
 
     Invoke-Collector -Name 'Teams meetings' -FindingIds 'TMS-004', 'TMS-005', 'TMS-006', 'TMS-007', 'TMS-011' -Script {
         $m = Get-CsTeamsMeetingPolicy -Identity Global
+
         $anon = @(if ($m.AllowAnonymousUsersToJoinMeeting) { 'Anonymous users can join meetings' }; if ($m.AllowAnonymousUsersToStartMeeting) { 'Anonymous users can start meetings' })
-        New-Finding -Id 'TMS-004' -Status $(if ($anon.Count) { 'Gap' } else { 'Pass' }) -AffectedObjects $anon `
+        New-SettingFinding -Id 'TMS-004' -Gap ($anon.Count -gt 0) -Affected $anon -Unreturned (Get-UnreturnedProperties $m 'AllowAnonymousUsersToJoinMeeting', 'AllowAnonymousUsersToStartMeeting') `
             -Detail "Global meeting policy: AllowAnonymousUsersToJoinMeeting = $($m.AllowAnonymousUsersToJoinMeeting); AllowAnonymousUsersToStartMeeting = $($m.AllowAnonymousUsersToStartMeeting)."
 
-        $lobby = @(if ($m.AutoAdmittedUsers -notin 'InvitedUsers', 'EveryoneInCompanyExcludingGuests', 'OrganizerOnly') { "Who can bypass the lobby: $($m.AutoAdmittedUsers)" }
+        $lobby = @(if ($null -ne $m.AutoAdmittedUsers -and $m.AutoAdmittedUsers -notin 'InvitedUsers', 'EveryoneInCompanyExcludingGuests', 'OrganizerOnly') { "Who can bypass the lobby: $($m.AutoAdmittedUsers)" }
             if ($m.AllowPSTNUsersToBypassLobby) { 'Dial-in callers can bypass the lobby' })
-        New-Finding -Id 'TMS-005' -Status $(if ($lobby.Count) { 'Gap' } else { 'Pass' }) -AffectedObjects $lobby `
+        New-SettingFinding -Id 'TMS-005' -Gap ($lobby.Count -gt 0) -Affected $lobby -Unreturned (Get-UnreturnedProperties $m 'AutoAdmittedUsers', 'AllowPSTNUsersToBypassLobby') `
             -Detail "AutoAdmittedUsers = $($m.AutoAdmittedUsers); AllowPSTNUsersToBypassLobby = $($m.AllowPSTNUsersToBypassLobby)."
 
-        $chatOk = $m.MeetingChatEnabledType -in 'EnabledExceptAnonymous', 'EnabledInMeetingOnlyForAllExceptAnonymous', 'Disabled'
-        New-Finding -Id 'TMS-006' -Status $(if ($chatOk) { 'Pass' } else { 'Gap' }) `
+        $chatBad = $null -ne $m.MeetingChatEnabledType -and $m.MeetingChatEnabledType -notin 'EnabledExceptAnonymous', 'EnabledInMeetingOnlyForAllExceptAnonymous', 'Disabled'
+        New-SettingFinding -Id 'TMS-006' -Gap $chatBad -Unreturned (Get-UnreturnedProperties $m 'MeetingChatEnabledType') `
             -Detail "MeetingChatEnabledType = $($m.MeetingChatEnabledType). Anonymous users should not be able to use meeting chat."
 
-        $present = @(if ($m.DesignatedPresenterRoleMode -ne 'OrganizerOnlyUserOverride') { "Who can present: $($m.DesignatedPresenterRoleMode)" }
+        $present = @(if ($null -ne $m.DesignatedPresenterRoleMode -and $m.DesignatedPresenterRoleMode -ne 'OrganizerOnlyUserOverride') { "Who can present: $($m.DesignatedPresenterRoleMode)" }
             if ($m.AllowExternalParticipantGiveRequestControl) { 'External participants can give or request control' })
-        New-Finding -Id 'TMS-007' -Status $(if ($present.Count) { 'Gap' } else { 'Pass' }) -AffectedObjects $present `
+        New-SettingFinding -Id 'TMS-007' -Gap ($present.Count -gt 0) -Affected $present -Unreturned (Get-UnreturnedProperties $m 'DesignatedPresenterRoleMode', 'AllowExternalParticipantGiveRequestControl') `
             -Detail "DesignatedPresenterRoleMode = $($m.DesignatedPresenterRoleMode); AllowExternalParticipantGiveRequestControl = $($m.AllowExternalParticipantGiveRequestControl)."
 
-        New-Finding -Id 'TMS-011' -Status $(if ($m.AllowCloudRecording) { 'Gap' } else { 'Pass' }) `
+        New-SettingFinding -Id 'TMS-011' -Gap ([bool]$m.AllowCloudRecording) -Unreturned (Get-UnreturnedProperties $m 'AllowCloudRecording') `
             -Detail "AllowCloudRecording = $($m.AllowCloudRecording). CIS recommends recording off by default and enabled per organiser where needed."
     }
 
     Invoke-Collector -Name 'Teams client settings' -FindingIds 'TMS-008', 'TMS-009' -Script {
         $c = Get-CsTeamsClientConfiguration -Identity Global
-        $storage = @(foreach ($p in 'AllowDropBox', 'AllowBox', 'AllowGoogleDrive', 'AllowShareFile', 'AllowEgnyte') { if ($c.$p) { $p -replace '^Allow', '' } })
-        New-Finding -Id 'TMS-008' -Status $(if ($storage.Count) { 'Gap' } else { 'Pass' }) -AffectedObjects $storage `
+        $providers = 'AllowDropBox', 'AllowBox', 'AllowGoogleDrive', 'AllowShareFile', 'AllowEgnyte'
+        $storage = @(foreach ($p in $providers) { if ($c.$p) { $p -replace '^Allow', '' } })
+        New-SettingFinding -Id 'TMS-008' -Gap ($storage.Count -gt 0) -Affected $storage -Unreturned (Get-UnreturnedProperties $c $providers) `
             -Detail 'Third-party cloud storage providers enabled for file sharing in Teams.'
-        New-Finding -Id 'TMS-009' -Status $(if ($c.AllowEmailIntoChannel) { 'Gap' } else { 'Pass' }) `
+        New-SettingFinding -Id 'TMS-009' -Gap ([bool]$c.AllowEmailIntoChannel) -Unreturned (Get-UnreturnedProperties $c 'AllowEmailIntoChannel') `
             -Detail "AllowEmailIntoChannel = $($c.AllowEmailIntoChannel)."
     }
 
     Invoke-Collector -Name 'Teams messaging' -FindingIds 'TMS-010' -Script {
         $msg = Get-CsTeamsMessagingPolicy -Identity Global
-        New-Finding -Id 'TMS-010' -Status $(if ($msg.AllowSecurityEndUserReporting) { 'Pass' } else { 'Gap' }) `
+        # Reporting should be ON: here the bad state is False, and an unreturned value is unknown.
+        New-SettingFinding -Id 'TMS-010' -Gap ($null -ne $msg.AllowSecurityEndUserReporting -and -not $msg.AllowSecurityEndUserReporting) -Unreturned (Get-UnreturnedProperties $msg 'AllowSecurityEndUserReporting') `
             -Detail "AllowSecurityEndUserReporting = $($msg.AllowSecurityEndUserReporting). Lets users report suspicious messages to the security team."
     }
 
-
     Invoke-Collector -Name 'Teams external meeting chat' -FindingIds 'TMS-012' -Script {
         $m = Get-CsTeamsMeetingPolicy -Identity Global
-        # An empty property is unknown, never a pass.
-        if ($null -eq $m.AllowExternalNonTrustedMeetingChat) {
-            New-Finding -Id 'TMS-012' -Status NotAssessed -Detail 'Get-CsTeamsMeetingPolicy did not return AllowExternalNonTrustedMeetingChat.'
-        }
-        else {
-            New-Finding -Id 'TMS-012' -Status $(if ($m.AllowExternalNonTrustedMeetingChat) { 'Gap' } else { 'Pass' }) `                -Detail "Global meeting policy: AllowExternalNonTrustedMeetingChat = $($m.AllowExternalNonTrustedMeetingChat). When true, people from untrusted organizations can chat in your meetings."
-        }
+        New-SettingFinding -Id 'TMS-012' -Gap ([bool]$m.AllowExternalNonTrustedMeetingChat) -Unreturned (Get-UnreturnedProperties $m 'AllowExternalNonTrustedMeetingChat') `
+            -Detail "Global meeting policy: AllowExternalNonTrustedMeetingChat = $($m.AllowExternalNonTrustedMeetingChat). When true, people from untrusted organizations can chat in your meetings."
     }
 }
