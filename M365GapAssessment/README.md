@@ -140,6 +140,10 @@ Optional report additions (also available on `Export-M365GapReport` and `Convert
   Only CIS-mapped checks appear, so it is **not** a score against the whole benchmark; recommendation numbers follow the control
   mapping, so check them against the benchmark version a client uses.
 
+To see how much of the whole benchmark the tool covers, export the recommendation list from your licensed CIS download to a CSV
+(`Recommendation`, `Title`, optionally `Level` and `Section`) and run `pwsh ./Docs/Get-CisCoverage.ps1 -BenchmarkCsv <file>`. It writes a
+Covered / Partial / Missing report to `Assessments/CIS-coverage.md`. The CSV and the report hold CIS content, so both are git-ignored.
+
 Each check ends as **Gap**, **Pass** or **NotAssessed**. NotAssessed means Graph refused the call (missing licence such
 as Entra ID P2 for PIM, Intune or Defender, or missing consent) and is reported separately rather than counted as a pass.
 
@@ -191,7 +195,7 @@ Invoke-M365SecurityReview -Environment USGov -TenantId contoso.us -Domain Licens
 1. **Add a mapping entry** to `Data/ControlMapping.json`, in id order (the tests enforce order and numbering):
    `id` (like `ENT-CA-010`), `domain`, `name` (phrased as the problem), `severity` (Critical, High, Medium, Low),
    `scf`, `nistCsf` and at least two `remediation` steps. Optional: `cis` (CIS recommendation numbers, only where the check clearly tests
-   the same setting) and `license` (`EntraP1`, `EntraP2`, `Intune`, `DefenderO365` or `DefenderEndpoint`: a refused call is then reported with the
+   the same setting), `cisPartial` (numbers the check tests only in part; reported as Partial by the coverage generator) and `license` (`EntraP1`, `EntraP2`, `Intune`, `DefenderO365` or `DefenderEndpoint`: a refused call is then reported with the
    missing licence). Ids are never reused: a reserved but unused number goes in `retiredIds`.
 2. **Emit it from a collector** inside `Invoke-Collector` so a refused call, a missing licence or an absent cmdlet becomes a NotAssessed
    finding with a reason instead of aborting the run:

@@ -82,5 +82,8 @@ Describe 'ControlMapping.json' {
             if ($_.license) { $_.license | Should -BeIn 'EntraP1', 'EntraP2', 'Intune', 'DefenderO365', 'DefenderEndpoint' }
             foreach ($ref in @($_.cis)) { if ($ref) { $ref | Should -Match '^\d+(\.\d+)*$' } }
         }
+        It 'keeps cisPartial (optional) well formed and disjoint from cis' {
+            foreach ($ref in @($_.cisPartial)) { if ($ref) { $ref | Should -Match '^\d+(\.\d+)*$'; $ref | Should -Not -BeIn @($_.cis) } }
+        }
     }
 }

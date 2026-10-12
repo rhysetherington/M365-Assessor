@@ -7,3 +7,8 @@ Assessments/
 *.env
 *accepted*.json
 *.log
+
+# CIS benchmark exports are licensed content; keep them out of the repository
+Docs/*benchmark*.csv
+*cis-benchmark*.csv
+*CIS-coverage*.md

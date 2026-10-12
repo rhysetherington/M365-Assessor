@@ -3,9 +3,9 @@
 Companion to `M365SAT-comparison.md`. All new checks are **written fresh** from CIS and Microsoft documentation (see licence position in the comparison).
 Each item keeps the module's rules: read-only, `Invoke-Collector` + `New-Finding`, one `ControlMapping.json` entry per finding.
 
-**Status as of 2026-10-12.** The module now has 98 findings (the review started from 70) and an 837-test offline Pester suite that runs in GitHub Actions. Of the 8 numbered plan
-items, 5 are done (1, 2, 3, 4 and 6), 1 is partly done (7: wired, not live-tested) and 2 are not
-started (5 and 8). Three unplanned areas were also built. What remains is listed in section 2.
+**Status as of 2026-10-12.** The module now has 98 findings (the review started from 70) and a 949-test offline Pester suite that runs in GitHub Actions. Of the 8 numbered plan
+items, 6 are done (1 to 6), 1 is partly done (7: wired, not live-tested) and 1 is not
+started (8). Three unplanned areas were also built. What remains is listed in section 2.
 
 Effort: S = under half a day, M = 1-2 days, L = several days.
 
@@ -17,8 +17,8 @@ Effort: S = under half a day, M = 1-2 days, L = several days.
 | 2 | Exchange and SharePoint gaps | **Done**, live-verified | Audit log (`PUR-001`), OneDrive sync (`SPO-005`) and Outlook on the web storage providers (`EXO-008`, CIS 6.5.3) covered. `EXO-008` was run live as Global Reader on 2026-10-12: the role can read `Get-OwaMailboxPolicy`, and the test tenant's default policy allows additional storage providers (a real Gap). |
 | 3 | Evidence files | **Done**, live-verified | `-IncludeEvidence`; formula injection tested offline only (no live item started with `=+-@`). |
 | 4 | CIS view | **Done**, live-verified | `-CisView`. **No L1/L2 level**: the mapping has no level data. |
-| 5 | CIS coverage generator | **Not started** | Needs the licensed CIS benchmark list as input. |
-| 6 | Pester suite, CI and analyzer | **Done** | 837 offline tests, each feature checked by breaking it in a copy. GitHub Actions runs Pester on Linux, macOS and Windows plus PSScriptAnalyzer (`.github/workflows/ci.yml`; rule exclusions and reasons in `PSScriptAnalyzerSettings.psd1`). |
+| 5 | CIS coverage generator | **Built**, not yet run on the licensed list | `Docs/Get-CisCoverage.ps1` reads your own benchmark CSV and reports Covered / Partial / Missing per recommendation. Tested with invented data only; the CSV and its report are git-ignored because they hold CIS content. No finding uses the new optional `cisPartial` field yet. |
+| 6 | Pester suite, CI and analyzer | **Done** | 949 offline tests, each feature checked by breaking it in a copy. GitHub Actions runs Pester on Linux, macOS and Windows plus PSScriptAnalyzer (`.github/workflows/ci.yml`; rule exclusions and reasons in `PSScriptAnalyzerSettings.psd1`). |
 | 7 | Sovereign cloud validation | **Wired, not live-tested** | One cloud table drives all services; only `Global` is live-tested. Germany rejected. |
 | 8 | Azure subscription domain | **Not started** | Still needs the dependency decision (see below). |
 | + | Defender for Office 365 depth | **Done**, live-verified | New: `DFO-001..014`. Not in the original plan. |
@@ -81,8 +81,8 @@ Audit log search enabled, OneDrive sync restrictions and Outlook on the web stor
 ### 4. CIS view of the report (S): done (without L1/L2)
 `-CisView` regroups findings by CIS recommendation number and benchmark section. It states that it is not a score against the whole benchmark.
 
-### 5. CIS coverage generator (S): open
-See "Open plan items".
+### 5. CIS coverage generator (S): built
+`pwsh ./Docs/Get-CisCoverage.ps1 -BenchmarkCsv <your export>`. Needs a CSV with `Recommendation` and `Title` columns (optional `Level`, `Section`) taken from the licensed CIS download. A recommendation is Covered when a finding lists it in `cis`, Partial when only `cisPartial` does, otherwise Missing; mapped numbers absent from the CSV are listed so typos and version mismatches show up. Next step: run it on the real list and decide which Missing items are worth building.
 
 ### 6. Pester suite and CI check (M): done
 Covers findings and scoring, the compare cmdlet, DNS helper, mapping integrity, every new collector with fake Graph or fake cmdlets, report rendering, sessions, clouds and the generated documentation.
@@ -102,6 +102,6 @@ Opt-in `Azure` domain with read-only checks (Defender for Cloud plans, storage p
 - Credentials as command-line parameters (keep certificate, device code and interactive).
 
 ## 6. Suggested order from here
-1. CIS coverage generator.
+1. Run the CIS coverage generator on the licensed list and pick gaps to build.
 2. Report layout fix for narrow screens.
 3. Live tests in a sovereign cloud when a tenant is available, then the Azure domain once the dependency decision is made.
