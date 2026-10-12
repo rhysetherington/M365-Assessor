@@ -1,31 +1,13 @@
 #Requires -Modules @{ ModuleName = 'Pester'; ModuleVersion = '5.0.0' }
 
-# Offline tests for Private/Get-EntraBaselineGaps.ps1. The two Graph request functions are replaced inside the module with a
-# fixture-driven fake, so nothing touches a tenant. A fixture is a list of { Match, Data }: the first entry whose Match text
-# appears in the requested URI wins; Data may be a scriptblock to simulate a Graph error.
+# Offline tests for Private/Get-EntraBaselineGaps.ps1 using the fake Graph layer in Support/FakeGraph.ps1 (no tenant needed).
 
 BeforeAll {
     . (Join-Path $PSScriptRoot 'Support/TestSupport.ps1')
     Import-Module (Get-ModuleUnderTestPath) -Force -ErrorAction Stop
 
-    InModuleScope M365GapAssessment {
-        $script:Fixture = @()
-        function script:Resolve-Fixture {
-            param($Uri)
-            foreach ($e in $script:Fixture) {
-                if ($Uri.Contains($e.Match)) { if ($e.Data -is [scriptblock]) { return (& $e.Data) } else { return $e.Data } }
-            }
-            throw "No fixture for $Uri"
-        }
-        function script:Invoke-GraphRequestWithRetry { param($Uri, $Headers, $MaxRetries) Resolve-Fixture $Uri }
-        function script:Get-GraphPagedResult {
-            param($Uri, $Headers, $MaxItems)
-            $r = Resolve-Fixture $Uri
-            if ($null -ne $r.value) { @($r.value) } else { $r }
-        }
-    }
-
-    function script:J($Json) { $Json | ConvertFrom-Json }
+    . (Join-Path $PSScriptRoot 'Support/FakeGraph.ps1')
+    Enable-FakeGraph
 
     # Healthy tenant by default; each test overrides only what it is about.
     function script:New-Fixture {
@@ -47,11 +29,7 @@ BeforeAll {
     # Runs the collector against a fixture and returns findings keyed by ID.
     function script:Invoke-Baseline {
         param([hashtable]$Override = @{})
-        $fixture = New-Fixture -Override $Override
-        $findings = InModuleScope M365GapAssessment -Parameters @{ F = $fixture } { $script:Fixture = $F; Get-EntraBaselineGaps 3>$null }
-        $byId = @{}
-        foreach ($f in $findings) { $byId[$f.FindingId] = $f }
-        $byId
+        Invoke-WithFixture -Fixture (New-Fixture -Override $Override) -Command 'Get-EntraBaselineGaps'
     }
 }
 

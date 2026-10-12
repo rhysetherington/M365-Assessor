@@ -51,8 +51,15 @@ function Get-EntraIDGaps {
                 ($c.clientAppTypes -contains 'exchangeActiveSync') -and ($c.clientAppTypes -contains 'other') -and
                 ($_.grantControls.builtInControls -contains 'block')
             })
-        New-Finding -Id 'ENT-CA-003' -Status $(if ($legacyBlock.Count) { 'Pass' } else { 'Gap' }) `
-            -Detail $(if ($legacyBlock.Count) { "Blocked by: $($legacyBlock.displayName -join ', ')" } else { 'No enabled policy blocks Exchange ActiveSync + other legacy clients for all users/apps.' })
+        # Security Defaults is an alternative to Conditional Access: it also blocks legacy authentication and requires admin MFA.
+        $securityDefaults = Get-SecurityDefaultsState
+        $sdUnknown = if ($null -eq $securityDefaults) { ' Security Defaults state could not be read, so it was not taken into account.' } else { '' }
+
+        $legacyPass = $legacyBlock.Count -gt 0 -or $securityDefaults -eq $true
+        New-Finding -Id 'ENT-CA-003' -Status $(if ($legacyPass) { 'Pass' } else { 'Gap' }) `
+            -Detail $(if ($legacyBlock.Count) { "Blocked by: $($legacyBlock.displayName -join ', ')" }
+                elseif ($securityDefaults -eq $true) { 'Covered by Security Defaults, which blocks legacy authentication. No Conditional Access policy does so.' }
+                else { "No enabled policy blocks Exchange ActiveSync + other legacy clients for all users/apps, and Security Defaults is not enabled.$sdUnknown" })
 
         $adminMfa = @($enabled | Where-Object {
                 $c = $_.conditions
@@ -60,8 +67,11 @@ function Get-EntraIDGaps {
                 ($c.applications.includeApplications -contains 'All') -and
                 (($_.grantControls.builtInControls -contains 'mfa') -or ($null -ne $_.grantControls.authenticationStrength))
             })
-        New-Finding -Id 'ENT-CA-004' -Status $(if ($adminMfa.Count) { 'Pass' } else { 'Gap' }) `
-            -Detail $(if ($adminMfa.Count) { "Enforced by: $($adminMfa.displayName -join ', ')" } else { 'No enabled policy requires MFA / authentication strength for Global Administrators across all cloud apps.' })
+        $adminPass = $adminMfa.Count -gt 0 -or $securityDefaults -eq $true
+        New-Finding -Id 'ENT-CA-004' -Status $(if ($adminPass) { 'Pass' } else { 'Gap' }) `
+            -Detail $(if ($adminMfa.Count) { "Enforced by: $($adminMfa.displayName -join ', ')" }
+                elseif ($securityDefaults -eq $true) { 'Covered by Security Defaults, which requires MFA for administrators. Consider Conditional Access for phishing-resistant strength and finer control.' }
+                else { "No enabled policy requires MFA / authentication strength for Global Administrators across all cloud apps, and Security Defaults is not enabled.$sdUnknown" })
     }
 
     # --- Privileged roles (PIM) ---------------------------------------------------------------

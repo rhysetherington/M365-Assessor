@@ -87,6 +87,23 @@ function Get-GraphPagedResult {
     $results.ToArray()
 }
 
+function Get-SecurityDefaultsState {
+    <#
+    .SYNOPSIS
+        $true / $false for the tenant's Security Defaults, or $null when the policy cannot be read.
+    .DESCRIPTION
+        Security Defaults requires MFA for administrators and blocks legacy authentication tenant-wide, so checks that look
+        only at Conditional Access policies must take it into account to avoid reporting a gap that is already covered.
+    #>
+    [CmdletBinding()]
+    param()
+    try {
+        $policy = Invoke-GraphRequestWithRetry -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy'
+        [bool]$policy.isEnabled
+    }
+    catch { $null }
+}
+
 function Test-HasItems {
     # @($null).Count is 1 in PowerShell, so null-safe emptiness needs its own helper.
     param($Value)
