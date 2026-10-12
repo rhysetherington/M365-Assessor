@@ -89,7 +89,7 @@ Audit log search enabled, OneDrive sync restrictions and Outlook on the web stor
 
 Worth building, cheapest first (all read-only, Global Reader should suffice):
 
-1. **Conditional Access policy checks: built, not yet live-tested.** `ENT-CA-010` to `ENT-CA-018` cover `5.2.2.2`, `5.2.2.4`, `5.2.2.5`, `5.2.2.10`, `5.2.2.12`, `5.2.2.13`, `5.2.2.15`, `5.2.2.16` and `5.2.2.17` (new file `Private/Get-ConditionalAccessGaps.ps1`, 54 offline tests). Admin roles are looked up by name from the tenant's role templates at run time, and phishing-resistant is judged from the strength's allowed methods. Coverage after this group: **79 Covered, 2 Partial, 77 Missing** of 158. Still to confirm live: that Global Reader gets `allowedCombinations` on the authentication strength and the role template names.
+1. **Conditional Access policy checks: built, run live as Global Reader (partly verified).** `ENT-CA-010` to `ENT-CA-018` cover `5.2.2.2`, `5.2.2.4`, `5.2.2.5`, `5.2.2.10`, `5.2.2.12`, `5.2.2.13`, `5.2.2.15`, `5.2.2.16` and `5.2.2.17` (new file `Private/Get-ConditionalAccessGaps.ps1`, 54 offline tests). Admin roles are looked up by name from the tenant's role templates at run time, and phishing-resistant is judged from the strength's allowed methods. Coverage after this group: **79 Covered, 2 Partial, 77 Missing** of 158. Live run on 2026-10-12 as Global Reader: all nine ran with no NotAssessed, and the 15 admin role names resolved from the role templates. The test tenant has Security Defaults on and no Conditional Access policies, so every one correctly reported a Gap and the Pass paths were not exercised live. Still unconfirmed: that a real policy returns `allowedCombinations` on its authentication strength (if not, `ENT-CA-012` reports NotAssessed, not a pass). To verify, create a report-only-then-enabled test policy in a tenant where that is acceptable.
 2. **SharePoint tenant settings, same call as today (about 8):** `7.2.2`, `7.2.4`, `7.2.7`, `7.2.9`, `7.2.10`, `7.2.11`, `7.3.1`, and `7.2.8` if it is readable.
 3. **Entra tenant policies (about 10):** `5.1.3.1` security group creation, `5.1.4.1` to `5.1.4.4` device join and local admin, `5.1.4.6` BitLocker key recovery, `5.1.5.3` to `5.1.5.6` application password and certificate lifetimes, `5.2.3.6` / `5.2.3.7` / `5.2.3.10` from the authentication methods policy, `5.3.5` PIM approval for Privileged Role Administrator.
 4. **Identity hygiene (3):** `1.1.1` admin accounts cloud-only, `1.1.4` admin licences with a reduced footprint, `5.2.4.2` to `5.2.4.5` SSPR details if the policy is readable.
@@ -116,6 +116,6 @@ Opt-in `Azure` domain with read-only checks (Defender for Cloud plans, storage p
 - Credentials as command-line parameters (keep certificate, device code and interactive).
 
 ## 6. Suggested order from here
-1. Live-check `ENT-CA-010` to `ENT-CA-018`, then build the remaining CIS Missing groups in the order above (SharePoint settings next).
+1. Build the remaining CIS Missing groups in the order above (SharePoint settings next).
 2. Report layout fix for narrow screens.
 3. Live tests in a sovereign cloud when a tenant is available, then the Azure domain once the dependency decision is made.
