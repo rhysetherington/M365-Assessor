@@ -221,4 +221,7 @@ function Get-EntraPolicyGaps {
     }
 
     Write-Progress -Id 2 -ParentId 1 -Activity 'Entra policy' -Completed
+
+    # CIS-derived baseline identity checks live in their own collector file but report under the EntraPolicy domain.
+    Get-EntraBaselineGaps
 }

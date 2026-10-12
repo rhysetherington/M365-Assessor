@@ -625,6 +625,68 @@
         "Select the domain, create DKIM keys and publish the two CNAME records (selector1/selector2._domainkey) at your DNS provider.",
         "Return to the portal and enable signing for the domain."
       ]
+    },
+    {
+      "id": "ENT-POL-006", "domain": "Entra ID", "name": "No baseline sign-in protection: Security Defaults off and no all-user MFA policy", "severity": "High",
+      "scf": "IAC-06", "nistCsf": "PR.AA-03",
+      "remediation": [
+        "Either enable Security Defaults: Entra admin center > Identity > Overview > Properties > Manage security defaults > Enabled.",
+        "Or (recommended where licensed) create a Conditional Access policy: Users = All users (exclude break-glass), Target = All cloud apps, Grant = Require multifactor authentication.",
+        "Do not run Security Defaults and Conditional Access together: Conditional Access replaces Security Defaults."
+      ]
+    },
+    {
+      "id": "ENT-POL-007", "domain": "Entra ID", "name": "Self-service password reset is not enabled", "severity": "Medium",
+      "scf": "IAC-10", "nistCsf": "PR.AA-01",
+      "remediation": [
+        "Entra admin center > Protection > Password reset > Properties: set 'Self service password reset enabled' to All (or a pilot group first).",
+        "Authentication methods: require 2 methods to reset and register users via the combined security information experience.",
+        "Note: this check reads the tenant-level flag only; confirm the All/Selected scope in the portal."
+      ]
+    },
+    {
+      "id": "ENT-AUTH-005", "domain": "Entra ID", "name": "Smart lockout threshold above 10 failed sign-ins", "severity": "Medium",
+      "scf": "IAC-22", "nistCsf": "PR.AA-03",
+      "remediation": [
+        "Entra admin center > Protection > Authentication methods > Password protection.",
+        "Set 'Lockout threshold' to 10 or fewer failed sign-ins (the default is 10).",
+        "Keep 'Lockout duration in seconds' at 60 or more."
+      ]
+    },
+    {
+      "id": "ENT-AUTH-006", "domain": "Entra ID", "name": "Smart lockout duration below 60 seconds", "severity": "Low",
+      "scf": "IAC-22", "nistCsf": "PR.AA-03",
+      "remediation": [
+        "Entra admin center > Protection > Authentication methods > Password protection.",
+        "Set 'Lockout duration in seconds' to 60 or more (the default is 60); longer slows password-spray attempts."
+      ]
+    },
+    {
+      "id": "ENT-AUTH-007", "domain": "Entra ID", "name": "Password expiration policy enabled (not set to never expire)", "severity": "Low",
+      "scf": "IAC-10.1", "nistCsf": "PR.AA-01",
+      "remediation": [
+        "Microsoft 365 admin center > Settings > Org settings > Security & privacy > Password expiration policy.",
+        "Select 'Set passwords to never expire' and rely on MFA, banned passwords and risk-based sign-in controls (NIST SP 800-63B guidance).",
+        "Force a reset only on evidence of compromise."
+      ]
+    },
+    {
+      "id": "ENT-GRP-003", "domain": "Entra ID", "name": "Public Microsoft 365 groups exist (review for approval)", "severity": "Low",
+      "scf": "DCH-13", "nistCsf": "PR.AA-05",
+      "remediation": [
+        "Microsoft 365 admin center > Teams & groups > Active teams & groups > filter Privacy = Public.",
+        "For each group confirm it is meant to be discoverable and joinable by anyone in the organisation; change others to Private.",
+        "Restrict who may create groups (Entra admin center > Groups > General) and review group ownership."
+      ]
+    },
+    {
+      "id": "ENT-CA-009", "domain": "Entra ID", "name": "Fewer than two emergency (break-glass) access accounts identified", "severity": "Medium",
+      "scf": "BCD-01", "nistCsf": "PR.IR-03",
+      "remediation": [
+        "Create two cloud-only accounts on the *.onmicrosoft.com domain with permanent Global Administrator and long random passwords stored offline.",
+        "Exclude both from every Conditional Access policy (directly or through a dedicated group).",
+        "Alert on any sign-in by these accounts and test them at least twice a year."
+      ]
     }
   ]
 }
