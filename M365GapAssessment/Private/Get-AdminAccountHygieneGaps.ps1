@@ -3,7 +3,8 @@
 
 # A service plan with one of these names means the licence gives the account applications (mailbox, SharePoint, Teams, Office apps).
 # Only plans that are switched on count, so an admin on a full licence with those plans turned off still passes.
-$script:AdminAppFootprintPlanPattern = '^(EXCHANGE_S_|SHAREPOINT|TEAMS1|MCO|OFFICESUBSCRIPTION|OFFICEMOBILE|YAMMER|SWAY|OFFICE_FORMS|PROJECTWORKMANAGEMENT|BPOS_S_TODO|MICROSOFTBOOKINGS|WHITEBOARD|MICROSOFT_PLANNER|POWERAPPS_O365|FLOW_O365|STREAM_O365)'
+# EXCHANGE_S_FOUNDATION is excluded: it is the base directory plan that even the free Power Automate licence carries, and gives no mailbox.
+$script:AdminAppFootprintPlanPattern = '^(EXCHANGE_S_(?!FOUNDATION)|SHAREPOINT|TEAMS1|MCO|OFFICESUBSCRIPTION|OFFICEMOBILE|YAMMER|SWAY|FORMS_PLAN|PROJECTWORKMANAGEMENT|BPOS_S_TODO|MICROSOFTBOOKINGS|WHITEBOARD|MICROSOFT_PLANNER|POWERAPPS_O365|FLOW_O365|STREAM_O365)'
 
 function Test-AdministratorRoleName {
     # The benchmark's definition of an administrative role: any role named "...Administrator", plus Global Reader.

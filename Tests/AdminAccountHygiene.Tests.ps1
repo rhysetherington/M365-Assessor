@@ -97,6 +97,29 @@ Describe 'ENT-USR-008 administrator accounts with applications' {
         $r = Invoke-Hygiene -Active @(Assign 'a1') -Users $script:Cloud -Licenses @{ a1 = @($lic) }
         $r['ENT-USR-008'].Status | Should -Be 'Pass'
     }
+    It 'does not treat the free Power Automate licence as an application licence (real plan names from a tenant)' {
+        $free = Lic 'FLOW_FREE' @((Plan 'DYN365_CDS_VIRAL'), (Plan 'EXCHANGE_S_FOUNDATION'), (Plan 'FLOW_P2_VIRAL'))
+        $r = Invoke-Hygiene -Active @(Assign 'a1') -Users $script:Cloud -Licenses @{ a1 = @($free) }
+        $r['ENT-USR-008'].Status | Should -Be 'Pass'
+    }
+    It 'still sees a real mailbox plan next to the Exchange foundation plan' {
+        $biz = Lic 'O365_BUSINESS_ESSENTIALS' @((Plan 'EXCHANGE_S_FOUNDATION'), (Plan 'EXCHANGE_S_STANDARD'), (Plan 'SHAREPOINTSTANDARD'), (Plan 'TEAMS1'))
+        $r = Invoke-Hygiene -Active @(Assign 'a1') -Users $script:Cloud -Licenses @{ a1 = @($biz) }
+        $r['ENT-USR-008'].Status | Should -Be 'Gap'
+        $r['ENT-USR-008'].AffectedObjects | Should -BeLike '*EXCHANGE_S_STANDARD*SHAREPOINTSTANDARD*TEAMS1*'
+        $r['ENT-USR-008'].AffectedObjects | Should -Not -BeLike '*EXCHANGE_S_FOUNDATION*'
+    }
+    It 'recognises the Forms plan names that real licences use' {
+        $forms = Lic 'X' @((Plan 'FORMS_PLAN_E5'), (Plan 'AAD_PREMIUM'))
+        (Invoke-Hygiene -Active @(Assign 'a1') -Users $script:Cloud -Licenses @{ a1 = @($forms) })['ENT-USR-008'].Status | Should -Be 'Gap'
+    }
+    It 'matches the plans of a Microsoft 365 E7 licence (real plan names from a tenant)' {
+        $e7 = Lic 'MICROSOFT_365_E7_NO_TEAMS' @((Plan 'EXCHANGE_S_ENTERPRISE'), (Plan 'SHAREPOINTENTERPRISE'), (Plan 'OFFICESUBSCRIPTION'), (Plan 'MCOSTANDARD'), (Plan 'YAMMER_ENTERPRISE'), (Plan 'AAD_PREMIUM_P2'), (Plan 'INTUNE_A'), (Plan 'WINDEFATP'))
+        $r = Invoke-Hygiene -Active @(Assign 'a1') -Users $script:Cloud -Licenses @{ a1 = @($e7) }
+        $r['ENT-USR-008'].AffectedObjects | Should -BeLike '*EXCHANGE_S_ENTERPRISE*MCOSTANDARD*OFFICESUBSCRIPTION*SHAREPOINTENTERPRISE*YAMMER_ENTERPRISE'
+        $r['ENT-USR-008'].AffectedObjects | Should -Not -BeLike '*AAD_PREMIUM*'
+        $r['ENT-USR-008'].AffectedObjects | Should -Not -BeLike '*INTUNE*'
+    }
     It 'passes for an admin with no licence at all' {
         $r = Invoke-Hygiene -Active @(Assign 'a1') -Users $script:Cloud -Licenses @{ a1 = @() }
         $r['ENT-USR-008'].Status | Should -Be 'Pass'
