@@ -1,7 +1,7 @@
 function Get-ExchangeOnlineGaps {
     <#
     .SYNOPSIS
-        Exchange Online collector (opt-in domain 'ExchangeOnline'): forwarding, audit, modern auth, SMTP AUTH, shared mailbox sign-in, anti-phish, Safe Links.
+        Exchange Online collector (opt-in domain 'ExchangeOnline'): forwarding, audit, modern auth, SMTP AUTH, shared mailbox sign-in, anti-phish, Safe Links, Outlook on the web storage providers.
     .DESCRIPTION
         Needs the ExchangeOnlineManagement module and a separate interactive sign-in (shared with the DefenderO365 domain). Only Get-* cmdlets are used.
         If the module is missing or the connection fails, every check is reported NotAssessed rather than aborting the run.
@@ -9,7 +9,7 @@ function Get-ExchangeOnlineGaps {
     [CmdletBinding()]
     param([string]$TenantId)
 
-    $ids = 'EXO-001', 'EXO-002', 'EXO-003', 'EXO-004', 'EXO-005', 'EXO-006', 'EXO-007'
+    $ids = 'EXO-001', 'EXO-002', 'EXO-003', 'EXO-004', 'EXO-005', 'EXO-006', 'EXO-007', 'EXO-008'
 
     Write-Progress -Id 2 -ParentId 1 -Activity 'Exchange Online' -Status 'Connecting' -PercentComplete 5
     $session = Start-ExchangeSession -TenantId $TenantId
@@ -62,6 +62,17 @@ function Get-ExchangeOnlineGaps {
             $links = @(Get-SafeLinksPolicy | Where-Object { $_.EnableSafeLinksForEmail -and $_.EnableSafeLinksForOffice -and $_.EnableSafeLinksForTeams })
             New-Finding -Id 'EXO-007' -Status $(if ($links.Count) { 'Pass' } else { 'Gap' }) `
                 -Detail "$($links.Count) Safe Links policy(ies) cover email, Office apps and Teams."
+        }
+
+        Invoke-Collector -Name 'Outlook on the web policies' -FindingIds 'EXO-008' -Script {
+            $policies = @(Get-OwaMailboxPolicy)
+            if (-not $policies.Count) { throw 'No Outlook on the web mailbox policy was returned.' }
+            # A policy that does not report the setting is unknown, never a pass.
+            $unknown = @($policies | Where-Object { $null -eq $_.AdditionalStorageProvidersAvailable })
+            if ($unknown.Count) { throw "AdditionalStorageProvidersAvailable was not returned for: $(($unknown | ForEach-Object { $_.Name }) -join ', ')." }
+            $open = @($policies | Where-Object { $_.AdditionalStorageProvidersAvailable } | ForEach-Object { $_.Name })
+            New-Finding -Id 'EXO-008' -Status $(if ($open.Count) { 'Gap' } else { 'Pass' }) -AffectedObjects $open `
+                -Detail "$($open.Count) of $($policies.Count) Outlook on the web policy(ies) allow additional storage providers (Dropbox, Box, Google Drive and similar)."
         }
     }
     finally {

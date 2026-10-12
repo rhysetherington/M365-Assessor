@@ -651,6 +651,14 @@
       ]
     },
     {
+      "id": "EXO-008", "domain": "Exchange Online", "name": "Outlook on the web allows third-party storage providers", "severity": "Medium",
+      "scf": "DCH-13", "nistCsf": "PR.DS-01", "cis": ["6.5.3"],
+      "remediation": [
+        "Exchange Online PowerShell: run Set-OwaMailboxPolicy -Identity <policy> -AdditionalStorageProvidersAvailable $false for every Outlook on the web policy that allows them.",
+        "Confirm with Get-OwaMailboxPolicy | Format-Table Name, AdditionalStorageProvidersAvailable. Users can then attach files only from OneDrive, SharePoint and their device, not Dropbox, Box, Google Drive or similar."
+      ]
+    },
+    {
       "id": "LIC-001", "domain": "Licensing", "name": "No Microsoft Entra ID P1/P2 licensing in the tenant", "severity": "High",
       "scf": "AST-02", "nistCsf": "ID.AM-02",
       "remediation": [

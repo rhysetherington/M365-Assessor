@@ -3,8 +3,8 @@
 Companion to `M365SAT-comparison.md`. All new checks are **written fresh** from CIS and Microsoft documentation (see licence position in the comparison).
 Each item keeps the module's rules: read-only, `Invoke-Collector` + `New-Finding`, one `ControlMapping.json` entry per finding.
 
-**Status as of 2026-10-12.** The module now has 97 findings (the review started from 70) and an 826-test offline Pester suite that runs in GitHub Actions. Of the 8 numbered plan
-items, 4 are done (1, 3, 4 and 6), 2 are partly done (2: one check open; 7: wired, not live-tested) and 2 are not
+**Status as of 2026-10-12.** The module now has 98 findings (the review started from 70) and an 837-test offline Pester suite that runs in GitHub Actions. Of the 8 numbered plan
+items, 5 are done (1, 2, 3, 4 and 6), 1 is partly done (7: wired, not live-tested) and 2 are not
 started (5 and 8). Three unplanned areas were also built. What remains is listed in section 2.
 
 Effort: S = under half a day, M = 1-2 days, L = several days.
@@ -14,11 +14,11 @@ Effort: S = under half a day, M = 1-2 days, L = several days.
 | # | Item | Status | Notes |
 |---|---|---|---|
 | 1 | Missing Graph-only CIS checks | **Done**, live-verified | `ENT-POL-006/007`, `ENT-AUTH-005/006/007`, `ENT-GRP-003`, `ENT-CA-009`. No CIS numbers on these entries (numbering could not be verified). |
-| 2 | Exchange and SharePoint gaps | **Mostly done** | Audit log (`PUR-001`) and OneDrive sync (`SPO-005`) covered. **Outlook on the web storage providers is not built.** |
+| 2 | Exchange and SharePoint gaps | **Done**; `EXO-008` not yet live-tested | Audit log (`PUR-001`), OneDrive sync (`SPO-005`) and Outlook on the web storage providers (`EXO-008`, CIS 6.5.3) covered. `EXO-008` is tested offline only; whether Global Reader can read `Get-OwaMailboxPolicy` is unconfirmed (if not, it reports NotAssessed with the reason). |
 | 3 | Evidence files | **Done**, live-verified | `-IncludeEvidence`; formula injection tested offline only (no live item started with `=+-@`). |
 | 4 | CIS view | **Done**, live-verified | `-CisView`. **No L1/L2 level**: the mapping has no level data. |
 | 5 | CIS coverage generator | **Not started** | Needs the licensed CIS benchmark list as input. |
-| 6 | Pester suite, CI and analyzer | **Done** | 826 offline tests, each feature checked by breaking it in a copy. GitHub Actions runs Pester on Linux, macOS and Windows plus PSScriptAnalyzer (`.github/workflows/ci.yml`; rule exclusions and reasons in `PSScriptAnalyzerSettings.psd1`). |
+| 6 | Pester suite, CI and analyzer | **Done** | 837 offline tests, each feature checked by breaking it in a copy. GitHub Actions runs Pester on Linux, macOS and Windows plus PSScriptAnalyzer (`.github/workflows/ci.yml`; rule exclusions and reasons in `PSScriptAnalyzerSettings.psd1`). |
 | 7 | Sovereign cloud validation | **Wired, not live-tested** | One cloud table drives all services; only `Global` is live-tested. Germany rejected. |
 | 8 | Azure subscription domain | **Not started** | Still needs the dependency decision (see below). |
 | + | Defender for Office 365 depth | **Done**, live-verified | New: `DFO-001..014`. Not in the original plan. |
@@ -28,16 +28,15 @@ Effort: S = under half a day, M = 1-2 days, L = several days.
 ### Revised CIS coverage against M365SAT's shipped inspectors
 The comparison counted 10 covered, 2 partial and 12 missing of 24. Re-reading the same 24 titles against today's findings (same title-based method and the same caveats):
 
-- **Now covered: 19.** Added since the review: Security Defaults (`ENT-POL-006`), SSPR enabled (`ENT-POL-007`), smart lockout threshold and duration (`ENT-AUTH-005/006`), audit log search (`PUR-001`), passwords never expire (`ENT-AUTH-007`), public groups (`ENT-GRP-003`), OneDrive sync (`SPO-005`) and emergency access accounts (`ENT-CA-009`, which nominates candidates for manual confirmation).
+- **Now covered: 20.** Added since the review: Security Defaults (`ENT-POL-006`), SSPR enabled (`ENT-POL-007`), smart lockout threshold and duration (`ENT-AUTH-005/006`), audit log search (`PUR-001`), passwords never expire (`ENT-AUTH-007`), public groups (`ENT-GRP-003`), OneDrive sync (`SPO-005`), Outlook on the web storage providers (`EXO-008`) and emergency access accounts (`ENT-CA-009`, which nominates candidates for manual confirmation).
 - **Partial: 2.** `CISMAz5111` (we require baseline protection rather than "Security Defaults disabled", the opposite polarity) and `CISMAz5131` (dynamic guest group, related to `ENT-GRP-002` with opposite polarity).
-- **Still missing: 3.** `CISMAz5124` (Entra admin centre access restricted; confirm a Graph source exists), `CISAz65` (SSPR methods required) and `CISMEx653` (Outlook on the web storage providers).
+- **Still missing: 2.** `CISMAz5124` (Entra admin centre access restricted; confirm a Graph source exists) and `CISAz65` (SSPR methods required).
 
-This is an estimate by title, not a CIS benchmark score: M365SAT ships only about 24 inspectors, and our own CIS references number 43 of 97 findings.
+This is an estimate by title, not a CIS benchmark score: M365SAT ships only about 24 inspectors, and our own CIS references number 44 of 98 findings.
 
 ## 2. What is left
 
 ### Open plan items
-- **Outlook on the web storage providers (item 2, S).** `Get-OwaMailboxPolicy` in the Exchange session; confirm Global Reader can read it before building.
 - **CIS coverage generator (item 5, S).** `Docs/Get-CisCoverage.ps1`: reads `ControlMapping.json` plus a user-supplied CSV of benchmark recommendation IDs and titles and emits Covered / Partial / Missing. The CSV must come from the licensed CIS download and must not be committed.
 - **Live tests in the other clouds (item 7, needs tenants).** GCC High, DoD and China are wired but untested; support cannot be claimed until each has been run live. Teams is unsupported in China by design.
 - **Azure subscription domain (item 8, L).** Decision needed: accept an `Az.*` dependency (heavy, version-pinning issues M365SAT hit) or use ARM REST with one `Invoke-ArmRequestWithRetry` helper mirroring the Graph one. Recommendation unchanged: ARM REST.
@@ -73,8 +72,8 @@ This is an estimate by title, not a CIS benchmark score: M365SAT ships only abou
 | Only approved public Microsoft 365 groups | `/groups?$filter=...` | `ENT-GRP-003` |
 | Emergency access accounts exist | CA exclusions plus permanent Global Administrators | `ENT-CA-009` (nominates; a person confirms) |
 
-### 2. Exchange and SharePoint gaps (M): mostly done
-Audit log search enabled and OneDrive sync restrictions are covered; Outlook on the web storage providers is open (above).
+### 2. Exchange and SharePoint gaps (M): done
+Audit log search enabled, OneDrive sync restrictions and Outlook on the web storage providers (`EXO-008`) are covered. `EXO-008` still needs a live run to confirm Global Reader can read the policy.
 
 ### 3. Evidence files (M): done
 `-IncludeEvidence` writes `evidence/<FindingId>.csv` and `evidence/_index.csv`, linked from the reports, no tenant ID, formula-injection neutralised, folder 700 and files 600.
@@ -103,6 +102,6 @@ Opt-in `Azure` domain with read-only checks (Defender for Cloud plans, storage p
 - Credentials as command-line parameters (keep certificate, device code and interactive).
 
 ## 6. Suggested order from here
-1. Outlook on the web storage providers, then the CIS coverage generator.
+1. Live-check `EXO-008` with the next Exchange run, then build the CIS coverage generator.
 2. Report layout fix for narrow screens.
 3. Live tests in a sovereign cloud when a tenant is available, then the Azure domain once the dependency decision is made.
