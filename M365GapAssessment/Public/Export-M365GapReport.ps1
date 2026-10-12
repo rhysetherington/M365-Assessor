@@ -67,6 +67,18 @@ function New-AssessmentMarkdown {
         $md.Add('Checks needing an unlicensed capability are reported as *Not assessed* so they are not mistaken for passes.')
         $md.Add('')
     }
+    $sessions = @($Assessment.Sessions | Where-Object { $_ })
+    if ($sessions.Count) {
+        $md.Add('## Assessment Sessions')
+        $md.Add('')
+        $md.Add("| Service | Signed in as | Matches Graph |`n|---|---|---|")
+        foreach ($sx in $sessions) { $md.Add("| $(ConvertTo-MdCell $sx.Service) | $(ConvertTo-MdCell $sx.Account) | $($sx.MatchesGraph) |") }
+        $md.Add('')
+        if (@($sessions | Where-Object { $_.MatchesGraph -in 'No', 'Unknown' }).Count) {
+            $md.Add('> **Note:** not every service was confirmed to use the same account as Microsoft Graph. Results from different accounts can reflect different permissions; confirm each service used the intended read-only account.')
+            $md.Add('')
+        }
+    }
     $md.Add('## Control Compliance Matrix (NIST CSF 2.0 / SCF)')
     $md.Add('')
     $md.Add("| NIST CSF 2.0 | SCF | Status | Findings |`n|---|---|---|---|")
@@ -207,7 +219,7 @@ section{margin-top:28px}h2{font-size:20px;margin:0 0 4px;letter-spacing:-.005em}
 details{background:var(--card);border:1px solid var(--line);border-radius:12px;margin:10px 0}
 details>summary{cursor:pointer;padding:12px 16px;list-style:none;display:flex;gap:10px;align-items:center;font-weight:600}
 details>summary::-webkit-details-marker{display:none}details>summary::after{content:"\25BE";margin-left:auto;color:var(--mute)}details[open]>summary::after{content:"\25B4"}
-details .body{padding:2px 18px 16px;border-top:1px solid var(--line)}
+details .body{padding:2px 18px 16px;border-top:1px solid var(--line);overflow-x:auto}
 details.sub{border-radius:8px;margin:8px 0;background:var(--soft);border:0}details.sub>summary{font-weight:500;padding:8px 12px}
 .meta{color:var(--mute);font-size:13px}code{background:var(--soft);padding:1px 6px;border-radius:5px;font-size:12.5px}
 ul,ol{margin:6px 0 6px 20px;padding:0}li{margin:3px 0}
@@ -324,6 +336,19 @@ $(if ($sum.NotAssessed) { "<div class=`"stat`"><b>$($sum.NotAssessed)</b><span>n
         & $add "<tr><td>$(& $enc $row.Nist)</td><td>$(& $enc $row.Scf)</td><td class=`"$cls`">$(& $enc $row.Status)</td><td>$(& $enc $row.Finding)</td></tr>"
     }
     & $add '</table></div></details>'
+    $htmlSessions = @($Assessment.Sessions | Where-Object { $_ })
+    if ($htmlSessions.Count) {
+        & $add '<details><summary>Assessment sessions (accounts used)</summary><div class="body"><table><tr><th>Service</th><th>Signed in as</th><th>Matches Graph</th></tr>'
+        foreach ($sx in $htmlSessions) {
+            $cls = switch ($sx.MatchesGraph) { 'Yes' { 's-Pass' } 'No' { 's-Gap' } default { 's-Not' } }
+            & $add "<tr><td>$(& $enc $sx.Service)</td><td>$(& $enc $sx.Account)</td><td class=`"$cls`">$(& $enc $sx.MatchesGraph)</td></tr>"
+        }
+        & $add '</table>'
+        if (@($htmlSessions | Where-Object { $_.MatchesGraph -in 'No', 'Unknown' }).Count) {
+            & $add '<p class="meta">Not every service was confirmed to use the same account as Microsoft Graph. Results from different accounts can reflect different permissions; confirm each service used the intended read-only account.</p>'
+        }
+        & $add '</div></details>'
+    }
     if ($Branding.CisView) {
         $cisView = Get-CisView -Findings $f
         if ($cisView) { & $add (Get-CisViewHtml -View $cisView) }

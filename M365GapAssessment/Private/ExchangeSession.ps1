@@ -27,6 +27,7 @@ function Start-ExchangeSession {
         if ($exchangeCloud -ne 'O365Default') { $conn.ExchangeEnvironmentName = $exchangeCloud }
         Connect-ExchangeOnline @conn
         $script:ExchangeSessionOpen = $true
+        Register-SessionIdentity -Service 'Exchange Online' -Account (Get-ExchangeSessionAccount -Kind Exchange)
         [pscustomobject]@{ Ready = $true; Error = $null }
     }
     catch {
@@ -54,6 +55,7 @@ function Start-ComplianceSession {
         if ($exchangeCloud -ne 'O365Default') { $conn.ExchangeEnvironmentName = $exchangeCloud }
         Connect-IPPSSession @conn
         $script:ComplianceSessionOpen = $true
+        Register-SessionIdentity -Service 'Security & Compliance (Purview)' -Account (Get-ExchangeSessionAccount -Kind Compliance)
         [pscustomobject]@{ Ready = $true; Error = $null }
     }
     catch {

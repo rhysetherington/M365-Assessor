@@ -95,6 +95,7 @@ function Reset-CollectorCache {
     $script:CaPolicyCache = $null
     $script:SecurityDefaultsCached = $false
     $script:SecurityDefaultsCache = $null
+    $script:SessionIdentities = [ordered]@{}   # a new tenant starts with no recorded sessions
 }
 
 function Get-ConditionalAccessPolicies {

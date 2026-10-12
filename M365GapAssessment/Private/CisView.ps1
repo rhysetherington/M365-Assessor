@@ -72,7 +72,7 @@ function Get-CisViewMarkdown {
     $md = [System.Collections.Generic.List[string]]::new()
     $md.Add('## CIS Microsoft 365 Foundations View')
     $md.Add('')
-    $md.Add("Findings regrouped by CIS recommendation number. $($View.Total) recommendation(s) were assessed by this tool; recommendations with no CIS-mapped check are not listed, so this is **not** a score against the whole benchmark.")
+    $md.Add("Findings regrouped by CIS recommendation number. $($View.Total) recommendation(s) were assessed by this tool; recommendations with no CIS-mapped check are not listed, so this is **not** a score against the whole benchmark. Each row names the issue a finding checks for, so **Pass** means that issue was not found.")
     $md.Add('')
     $md.Add("| Section | Assessed | Pass | Gap | Not assessed |`n|---|:-:|:-:|:-:|:-:|")
     foreach ($s in $View.Sections) { $md.Add("| $($s.Number) $(ConvertTo-MdCell $s.Title) | $($s.Items.Count) | $($s.Pass) | $($s.Gap) | $($s.NotAssessed) |") }
@@ -80,7 +80,7 @@ function Get-CisViewMarkdown {
         $md.Add('')
         $md.Add("### $($s.Number) $(ConvertTo-MdCell $s.Title)")
         $md.Add('')
-        $md.Add("| CIS | Status | Findings |`n|---|---|---|")
+        $md.Add("| CIS | Status | Issue checked |`n|---|---|---|")
         foreach ($i in $s.Items) {
             $names = ($i.Findings | ForEach-Object { "$($_.Id) $(ConvertTo-MdCell $_.Name)" }) -join '; '
             $md.Add("| $($i.Ref) | $($i.Status) | $names |")
@@ -97,14 +97,14 @@ function Get-CisViewHtml {
     $cls = { param($status) switch ($status) { 'Gap' { 's-Gap' } 'Pass' { 's-Pass' } 'Accepted' { 's-Pass' } default { 's-Not' } } }
     $sb = [System.Text.StringBuilder]::new()
     [void]$sb.Append("<details><summary>CIS Microsoft 365 Foundations view ($($View.Total) recommendations assessed)</summary><div class=`"body`">")
-    [void]$sb.Append('<p class="meta">Findings regrouped by CIS recommendation number. Only recommendations with a CIS-mapped check are listed, so this is not a score against the whole benchmark.</p>')
+    [void]$sb.Append('<p class="meta">Findings regrouped by CIS recommendation number. Only recommendations with a CIS-mapped check are listed, so this is not a score against the whole benchmark. Each row names the issue a finding checks for, so Pass means that issue was not found.</p>')
     [void]$sb.Append('<table><tr><th>Section</th><th>Assessed</th><th>Pass</th><th>Gap</th><th>Not assessed</th></tr>')
     foreach ($s in $View.Sections) {
         [void]$sb.Append("<tr><td>$(& $enc "$($s.Number) $($s.Title)")</td><td>$($s.Items.Count)</td><td>$($s.Pass)</td><td>$($s.Gap)</td><td>$($s.NotAssessed)</td></tr>")
     }
     [void]$sb.Append('</table>')
     foreach ($s in $View.Sections) {
-        [void]$sb.Append("<h4>$(& $enc "$($s.Number) $($s.Title)")</h4><table><tr><th>CIS</th><th>Status</th><th>Findings</th></tr>")
+        [void]$sb.Append("<h4>$(& $enc "$($s.Number) $($s.Title)")</h4><table><tr><th>CIS</th><th>Status</th><th>Issue checked</th></tr>")
         foreach ($i in $s.Items) {
             $names = ($i.Findings | ForEach-Object { "$(& $enc $_.Id) $(& $enc $_.Name)" }) -join '; '
             [void]$sb.Append("<tr><td>$(& $enc $i.Ref)</td><td class=`"$(& $cls $i.Status)`">$(& $enc $i.Status)</td><td>$names</td></tr>")

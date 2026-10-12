@@ -82,7 +82,7 @@ function Invoke-PurviewChecks {
     # --- Insider risk ------------------------------------------------------------------------------------------
     Write-Progress -Id 2 -ParentId 1 -Activity 'Microsoft Purview' -Status 'Insider risk' -PercentComplete 85
     Invoke-Collector -Name 'Insider risk management' -FindingIds 'PUR-006' -Script {
-        Assert-Cmdlet Get-InsiderRiskPolicy 'Insider Risk Management needs a Microsoft Purview premium licence (for example Microsoft 365 E5)'
+        Assert-Cmdlet Get-InsiderRiskPolicy 'Insider Risk Management needs a Microsoft Purview premium licence (for example Microsoft 365 E5), and the cmdlet is not offered to every read-only role: it was available to Global Administrator but not to Global Reader in testing'
         $policies = @(Get-InsiderRiskPolicy)
         New-Finding -Id 'PUR-006' -Status $(if ($policies.Count) { 'Pass' } else { 'Gap' }) `
             -AffectedObjects $(if ($policies.Count) { @() } else { @('No insider risk policy is configured') }) `

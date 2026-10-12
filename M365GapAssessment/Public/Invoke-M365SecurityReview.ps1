@@ -82,6 +82,7 @@ function Invoke-M365SecurityReview {
         # Licensing is always read first (when possible) so later NotAssessed results can be explained by missing licences.
         $script:LicenseCapabilities = $null
         Reset-CollectorCache
+        Register-SessionIdentity -Service 'Microsoft Graph' -Account $context.Account
         $licensing = $null
         try { $licensing = Get-LicenseInventory }
         catch { Write-Warning "License inventory unavailable: $($_.Exception.Message)" }
@@ -112,6 +113,13 @@ function Invoke-M365SecurityReview {
         }
         finally { Stop-ExchangeSessions }
 
+        # Report which account each service used, and say so when they differ or could not be determined.
+        $sessions = @(Get-SessionIdentityReport)
+        foreach ($s in $sessions) {
+            if ($s.MatchesGraph -eq 'No') { Write-Warning "$($s.Service) signed in as '$($s.Account)' but Microsoft Graph as '$($context.Account)'. Results from the two may reflect different permissions." }
+            elseif ($s.MatchesGraph -eq 'Unknown') { Write-Warning "Could not determine which account $($s.Service) signed in as; confirm it used the intended (read-only) account." }
+        }
+
         Set-AcceptedRisk -Findings $findings -Risks @(Import-AcceptedRisk -Path $AcceptedRiskPath)
         $ordered = @($findings | Sort-Object @{ Expression = { $script:SeverityOrder[[string]$_.Severity] } }, FindingId)
         $gapList = @($ordered | Where-Object Status -eq 'Gap')
@@ -125,6 +133,7 @@ function Invoke-M365SecurityReview {
             ModuleVersion = (Get-Module M365GapAssessment).Version.ToString()
             Domains       = $Domain
             Licensing     = $licensing
+            Sessions      = $sessions
             Score         = Measure-AssessmentScore -Findings $ordered
             Summary       = [pscustomobject][ordered]@{
                 TotalChecks  = $ordered.Count

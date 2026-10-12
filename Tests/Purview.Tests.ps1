@@ -92,6 +92,7 @@ Describe 'Purview checks' {
             $r = Invoke-Checks -Without 'Get-InsiderRiskPolicy'
             $r['PUR-006'].Status | Should -Be 'NotAssessed'
             $r['PUR-006'].Detail | Should -BeLike '*premium licence*'
+            $r['PUR-006'].Detail | Should -BeLike '*Global Reader*'   # the role can be the cause, not only the licence
         }
     }
 }

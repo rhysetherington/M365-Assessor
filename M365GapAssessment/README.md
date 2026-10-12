@@ -120,6 +120,22 @@ Optional report additions (also available on `Export-M365GapReport` and `Convert
 Each check ends as **Gap**, **Pass** or **NotAssessed**. NotAssessed means Graph refused the call (missing licence such
 as Entra ID P2 for PIM, Intune or Defender, or missing consent) and is reported separately rather than counted as a pass.
 
+### Which account each service used (Assessment sessions)
+
+Microsoft Graph, Exchange Online, Security & Compliance (Purview) and Teams are separate sign-ins, and some silently reuse a
+cached login. So the tool asks each service which account it signed in as and lists them in the reports ("Assessment sessions")
+and in the `Sessions` property of the result and the JSON:
+
+| Service | Signed in as | Matches Graph |
+|---|---|---|
+| Microsoft Graph | `reader@contoso.com` | Yes |
+| Microsoft Teams | `admin@contoso.com` | **No** |
+
+`Matches Graph` is `Yes`, `No`, `Unknown` (the service did not say who signed in) or `n/a` (Graph used an app registration, so there is no
+user to compare). The run prints a warning, and the report adds a note, when any service used a different account or its
+account could not be determined, because results from different accounts can reflect different permissions. This is what
+lets a read-only assessment show that every service really used the read-only account.
+
 ## Sovereign clouds (GCC High, DoD, China)
 
 `-Environment` selects the Microsoft cloud for the whole run. Microsoft Graph, Exchange Online, Security & Compliance (Purview)
@@ -153,7 +169,12 @@ Invoke-M365SecurityReview -Environment USGov -TenantId contoso.us -Domain Licens
 ## Notes and limits
 
 - Mappings to SCF/NIST are best-fit; validate against the SCF release your client uses.
-- Break-glass detection in Conditional Access is a heuristic (all-user policies with no exclusions).
+- Emergency-access detection (`ENT-CA-009`) only **nominates** candidates: permanent Global Administrators that an enabled Conditional Access
+  policy excludes. It ignores the UPN domain (clients differ on `.onmicrosoft.com` versus custom domains), so a person must confirm that
+  the accounts really are break-glass accounts. `ENT-CA-002` is a separate heuristic (all-user policies with no exclusions).
+- **Global Reader:** the checks were run as Global Reader across Graph, Exchange Online, Defender for Office 365, Purview and Teams, and
+  returned the same results as Global Administrator, with two exceptions that report NotAssessed rather than a wrong answer: `PUR-006`
+  (the Insider Risk cmdlet is not offered to Global Reader) and `DFO-014` (the user-reporting policy returned no object). Both messages say so.
 - Stale-account detection needs Entra ID P1 (`signInActivity`); MFA registration report needs `Reports.Read.All`.
 - Alerts/incidents are capped by `Get-DefenderGaps -MaxItems` (default 2000) to bound runtime on very large tenants.
 

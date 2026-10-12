@@ -81,6 +81,12 @@ Describe 'Rendering' {
         $script:Md | Should -BeLike '*### 6 Exchange admin center*'
         $script:Md | Should -BeLike '*| 5.2.2.3 | Gap | A-1 *'
     }
+    It 'labels the column "Issue checked" and explains that Pass means the issue was not found' {
+        $script:Md | Should -BeLike '*| CIS | Status | Issue checked |*'
+        $script:Md | Should -BeLike '*Pass** means that issue was not found*'
+        $script:Html | Should -BeLike '*<th>Issue checked</th>*'
+        $script:Html | Should -BeLike '*Pass means that issue was not found*'
+    }
     It 'Markdown says the view is not a score against the whole benchmark' {
         $script:Md | Should -BeLike '*not*a score against the whole benchmark*'
     }
@@ -117,6 +123,9 @@ Describe 'Reports with -CisView' {
     }
     It 'maps the real finding ENT-CA-004 into section 5' {
         (Get-Content -Raw (Join-Path $script:On 'M365_Security_Gap_Assessment.md')) | Should -BeLike '*### 5 Microsoft Entra admin center*'
+    }
+    It 'lets wide appendix tables scroll inside their box instead of spilling off narrow screens' {
+        (Get-Content -Raw (Join-Path $script:On 'M365_Security_Gap_Assessment.html')) | Should -Match 'details \.body\{[^}]*overflow-x:auto'
     }
     It 'leaves the default reports unchanged' {
         (Get-Content -Raw (Join-Path $script:Off 'M365_Security_Gap_Assessment.md')) | Should -Not -BeLike '*CIS Microsoft 365 Foundations View*'
