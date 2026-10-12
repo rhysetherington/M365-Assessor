@@ -1,5 +1,6 @@
 $script:DefenderO365Ids = 'DFO-001', 'DFO-002', 'DFO-003', 'DFO-004', 'DFO-005', 'DFO-006', 'DFO-007',
-    'DFO-008', 'DFO-009', 'DFO-010', 'DFO-011', 'DFO-012', 'DFO-013', 'DFO-014'
+    'DFO-008', 'DFO-009', 'DFO-010', 'DFO-011', 'DFO-012', 'DFO-013', 'DFO-014',
+    'DFO-015', 'DFO-016', 'DFO-017', 'DFO-018', 'DFO-019'
 
 function Get-DefenderO365Gaps {
     <#
@@ -175,5 +176,68 @@ function Invoke-DefenderO365Checks {
                 -AffectedObjects $(if ($rsp.EnableReportToMicrosoft -eq $false) { @('Users cannot report suspicious messages to Microsoft') } else { @() }) `
                 -Detail "EnableReportToMicrosoft = $($rsp.EnableReportToMicrosoft)."
         }
+    }
+
+    # --- CIS 2.1.3, 2.1.11 (part), 2.1.15, 2.4.1 (part), 2.4.2 -------------------------------------------
+    Invoke-Collector -Name 'Anti-malware administrator notification and file types' -FindingIds 'DFO-015', 'DFO-016' -Script {
+        Assert-Cmdlet Get-MalwareFilterPolicy $licenceHint
+        $policies = @(Get-MalwareFilterPolicy)
+        if (-not $policies.Count) { throw 'No anti-malware policy was returned.' }
+        $probe = $policies[0]
+        $missing = @('EnableInternalSenderAdminNotifications', 'InternalSenderAdminAddress', 'FileTypes' | Where-Object { $null -eq $probe.PSObject.Properties[$_] })
+        if ($missing.Count) { throw "Get-MalwareFilterPolicy did not return: $($missing -join ', ')." }
+
+        # DFO-015: administrators are told when an internal user sends malware (every policy, stricter than the highest-priority-only reading).
+        $silent = @($policies | Where-Object { -not ($_.EnableInternalSenderAdminNotifications -and $_.InternalSenderAdminAddress) })
+        New-Finding -Id 'DFO-015' -Status $(if ($silent.Count) { 'Gap' } else { 'Pass' }) `
+            -AffectedObjects @($silent | ForEach-Object { "$($_.Name) - notification $(if ($_.EnableInternalSenderAdminNotifications) { 'on but no address set' } else { 'off' })" }) `
+            -Detail "$($policies.Count - $silent.Count) of $($policies.Count) anti-malware policy(ies) notify an administrator when an internal sender is found sending malware."
+
+        # DFO-016: a comprehensive file type list. CIS also asks for 90% of a published list of 184 extensions; this only checks the size.
+        $widest = $policies | Where-Object { $_.EnableFileFilter } | ForEach-Object { [pscustomobject]@{ Name = $_.Name; Count = @($_.FileTypes).Count } } | Sort-Object Count -Descending | Select-Object -First 1
+        New-Finding -Id 'DFO-016' -Status $(if ($widest -and $widest.Count -ge 120) { 'Pass' } else { 'Gap' }) `
+            -Detail $(if ($widest) { "The common attachment filter in '$($widest.Name)' blocks $($widest.Count) file type(s); CIS defines a comprehensive list as at least 120. The check does not compare against the benchmark's own extension list." } else { 'No anti-malware policy has the common attachment filter turned on.' })
+    }
+
+    Invoke-Collector -Name 'Outbound spam limits' -FindingIds 'DFO-017' -Script {
+        Assert-Cmdlet Get-HostedOutboundSpamFilterPolicy $licenceHint
+        $default = @(Get-HostedOutboundSpamFilterPolicy | Where-Object { $_.IsDefault -or $_.Name -eq 'Default' }) | Select-Object -First 1
+        if (-not $default) { throw 'The default outbound spam policy was not returned.' }
+        $needed = 'RecipientLimitExternalPerHour', 'RecipientLimitInternalPerHour', 'RecipientLimitPerDay', 'ActionWhenThresholdReached', 'NotifyOutboundSpamRecipients'
+        $missing = @($needed | Where-Object { $null -eq $default.PSObject.Properties[$_] })
+        if ($missing.Count) { throw "Get-HostedOutboundSpamFilterPolicy did not return: $($missing -join ', ')." }
+        $issues = @()
+        # A limit of 0 means "use the service default", which is not a configured limit.
+        foreach ($l in @(@('RecipientLimitExternalPerHour', 500), @('RecipientLimitInternalPerHour', 1000), @('RecipientLimitPerDay', 1000))) {
+            $v = [int]$default.($l[0])
+            if ($v -le 0 -or $v -gt $l[1]) { $issues += "$($l[0]) = $v (needs 1 to $($l[1]))" }
+        }
+        if ("$($default.ActionWhenThresholdReached)" -ne 'BlockUser') { $issues += "ActionWhenThresholdReached = $($default.ActionWhenThresholdReached) (needs BlockUser)" }
+        if (-not @($default.NotifyOutboundSpamRecipients | Where-Object { $_ }).Count) { $issues += 'NotifyOutboundSpamRecipients names no mailbox' }
+        New-Finding -Id 'DFO-017' -Status $(if ($issues.Count) { 'Gap' } else { 'Pass' }) -AffectedObjects $issues `
+            -Detail "Default outbound spam policy '$($default.Name)': sending limits, block action and notification mailbox checked."
+    }
+
+    Invoke-Collector -Name 'Priority account protection' -FindingIds 'DFO-018' -Script {
+        Assert-Cmdlet Get-EmailTenantSettings $licenceHint
+        $settings = @(Get-EmailTenantSettings) | Select-Object -First 1
+        if ($null -eq $settings -or $null -eq $settings.EnablePriorityAccountProtection) { throw 'Get-EmailTenantSettings did not return EnablePriorityAccountProtection.' }
+        # CIS 2.4.1 also wants two alert policies for priority accounts (Security & Compliance); only the tenant switch is checked here.
+        New-Finding -Id 'DFO-018' -Status $(if ($settings.EnablePriorityAccountProtection) { 'Pass' } else { 'Gap' }) `
+            -Detail "EnablePriorityAccountProtection = $($settings.EnablePriorityAccountProtection). The matching alert policies are not checked."
+    }
+
+    Invoke-Collector -Name 'Strict preset on priority accounts' -FindingIds 'DFO-019' -Script {
+        Assert-Cmdlet Get-EOPProtectionPolicyRule $licenceHint
+        Assert-Cmdlet Get-ATPProtectionPolicyRule $licenceHint
+        $isStrict = { $_.Name -eq 'Strict Preset Security Policy' -or $_.Identity -eq 'Strict Preset Security Policy' }
+        $targeted = { param($r) "$($r.State)" -eq 'Enabled' -and (@($r.SentTo) + @($r.SentToMemberOf) + @($r.RecipientDomainIs) | Where-Object { $_ }).Count -gt 0 }
+        $eop = @(Get-EOPProtectionPolicyRule | Where-Object $isStrict) | Select-Object -First 1
+        $atp = @(Get-ATPProtectionPolicyRule | Where-Object $isStrict) | Select-Object -First 1
+        $problems = @()
+        if (-not $eop) { $problems += 'No Strict preset rule for Exchange Online Protection' } elseif (-not (& $targeted $eop)) { $problems += 'The Strict preset (EOP) is off or applies to no recipients' }
+        if (-not $atp) { $problems += 'No Strict preset rule for Defender for Office 365' } elseif (-not (& $targeted $atp)) { $problems += 'The Strict preset (Defender for Office 365) is off or applies to no recipients' }
+        New-Finding -Id 'DFO-019' -Status $(if ($problems.Count) { 'Gap' } else { 'Pass' }) -AffectedObjects $problems `
+            -Detail 'The Strict preset security policy should be enabled and assigned to priority accounts (users, groups or domains), in both its EOP and Defender for Office 365 parts.'
     }
 }

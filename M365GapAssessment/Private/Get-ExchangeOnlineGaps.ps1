@@ -1,7 +1,7 @@
 function Get-ExchangeOnlineGaps {
     <#
     .SYNOPSIS
-        Exchange Online collector (opt-in domain 'ExchangeOnline'): forwarding, audit, modern auth, SMTP AUTH, shared mailbox sign-in, anti-phish, Safe Links, Outlook on the web storage providers.
+        Exchange Online collector (opt-in domain 'ExchangeOnline'): forwarding, audit, modern auth, SMTP AUTH, shared mailbox sign-in, anti-phish, Safe Links, Outlook on the web policies, add-ins, direct send, MailTips, mailbox audit.
     .DESCRIPTION
         Needs the ExchangeOnlineManagement module and a separate interactive sign-in (shared with the DefenderO365 domain). Only Get-* cmdlets are used.
         If the module is missing or the connection fails, every check is reported NotAssessed rather than aborting the run.
@@ -9,7 +9,7 @@ function Get-ExchangeOnlineGaps {
     [CmdletBinding()]
     param([string]$TenantId)
 
-    $ids = 'EXO-001', 'EXO-002', 'EXO-003', 'EXO-004', 'EXO-005', 'EXO-006', 'EXO-007', 'EXO-008'
+    $ids = 'EXO-001', 'EXO-002', 'EXO-003', 'EXO-004', 'EXO-005', 'EXO-006', 'EXO-007', 'EXO-008', 'EXO-009', 'EXO-010', 'EXO-011', 'EXO-012', 'EXO-013', 'EXO-014'
 
     Write-Progress -Id 2 -ParentId 1 -Activity 'Exchange Online' -Status 'Connecting' -PercentComplete 5
     $session = Start-ExchangeSession -TenantId $TenantId
@@ -73,6 +73,75 @@ function Get-ExchangeOnlineGaps {
             $open = @($policies | Where-Object { $_.AdditionalStorageProvidersAvailable } | ForEach-Object { $_.Name })
             New-Finding -Id 'EXO-008' -Status $(if ($open.Count) { 'Gap' } else { 'Pass' }) -AffectedObjects $open `
                 -Detail "$($open.Count) of $($policies.Count) Outlook on the web policy(ies) allow additional storage providers (Dropbox, Box, Google Drive and similar)."
+        }
+
+        Invoke-Collector -Name 'Exchange organization (CIS)' -FindingIds 'EXO-009', 'EXO-010' -Script {
+            $org = Get-OrganizationConfig
+            # A property the cmdlet does not return is unknown, never a pass.
+            if ($null -eq $org.RejectDirectSend) { New-Finding -Id 'EXO-009' -Status NotAssessed -Detail 'Get-OrganizationConfig did not return RejectDirectSend.' }
+            else {
+                New-Finding -Id 'EXO-009' -Status $(if ($org.RejectDirectSend) { 'Pass' } else { 'Gap' }) -Detail "RejectDirectSend = $($org.RejectDirectSend). When false, anyone can send mail as your domain straight to your mailboxes without authenticating."
+            }
+            $tips = 'MailTipsAllTipsEnabled', 'MailTipsExternalRecipientsTipsEnabled', 'MailTipsGroupMetricsEnabled'
+            $unknownTips = @($tips | Where-Object { $null -eq $org.$_ })
+            if ($unknownTips.Count) { New-Finding -Id 'EXO-010' -Status NotAssessed -Detail "Get-OrganizationConfig did not return: $($unknownTips -join ', ')." }
+            else {
+                $off = @($tips | Where-Object { -not $org.$_ })
+                New-Finding -Id 'EXO-010' -Status $(if ($off.Count) { 'Gap' } else { 'Pass' }) -AffectedObjects @($off | ForEach-Object { "$_ = False" }) `
+                    -Detail "MailTips: $(($tips | ForEach-Object { "$_ = $($org.$_)" }) -join '; ')."
+            }
+        }
+
+        Invoke-Collector -Name 'Outlook on the web personal accounts' -FindingIds 'EXO-011' -Script {
+            $default = @(Get-OwaMailboxPolicy | Where-Object { $_.IsDefault }) | Select-Object -First 1
+            if (-not $default) { throw 'No default Outlook on the web mailbox policy was returned.' }
+            $props = 'PersonalAccountsEnabled', 'PersonalAccountCalendarsEnabled'
+            $unknown = @($props | Where-Object { $null -eq $default.$_ })
+            if ($unknown.Count) { throw "$($unknown -join ', ') was not returned for $($default.Name)." }
+            $on = @($props | Where-Object { $default.$_ })
+            New-Finding -Id 'EXO-011' -Status $(if ($on.Count) { 'Gap' } else { 'Pass' }) -AffectedObjects @($on | ForEach-Object { "$($default.Name): $_ = True" }) `
+                -Detail "Default Outlook on the web policy '$($default.Name)': $(($props | ForEach-Object { "$_ = $($default.$_)" }) -join '; ')."
+        }
+
+        Invoke-Collector -Name 'Outlook add-in installation' -FindingIds 'EXO-012' -Script {
+            $default = @(Get-RoleAssignmentPolicy | Where-Object { $_.IsDefault }) | Select-Object -First 1
+            if (-not $default) { throw 'No default role assignment policy was returned.' }
+            $addInRoles = 'My Custom Apps', 'My Marketplace Apps', 'My ReadWriteMailbox Apps'
+            $assigned = @($default.AssignedRoles | Where-Object { $_ -in $addInRoles })
+            New-Finding -Id 'EXO-012' -Status $(if ($assigned.Count) { 'Gap' } else { 'Pass' }) -AffectedObjects @($assigned | ForEach-Object { "$($default.Name): $_" }) `
+                -Detail "Default role assignment policy '$($default.Name)' $(if ($assigned.Count) { "lets users install add-ins through: $($assigned -join ', ')" } else { 'assigns none of the add-in roles' })."
+        }
+
+        Invoke-Collector -Name 'Mailbox audit bypass' -FindingIds 'EXO-013' -Script {
+            $bypass = @(Get-MailboxAuditBypassAssociation -ResultSize Unlimited | Where-Object { $_.AuditBypassEnabled -eq $true } | ForEach-Object { [string]$_.Name })
+            New-Finding -Id 'EXO-013' -Status $(if ($bypass.Count) { 'Gap' } else { 'Pass' }) -AffectedObjects $bypass `
+                -Detail "$($bypass.Count) account(s) are excluded from mailbox auditing (AuditBypassEnabled). Accounts on bypass leave no audit trail for what they read or change."
+        }
+
+        Invoke-Collector -Name 'Mailbox audit actions' -FindingIds 'EXO-014' -Script {
+            # Actions CIS expects to be audited for each logon type, in a user mailbox.
+            $expected = @{
+                AuditAdmin    = 'ApplyRecord', 'Copy', 'Create', 'FolderBind', 'HardDelete', 'MailItemsAccessed', 'Move', 'MoveToDeletedItems', 'SendAs', 'SendOnBehalf', 'Send', 'SoftDelete', 'Update', 'UpdateCalendarDelegation', 'UpdateFolderPermissions', 'UpdateInboxRules'
+                AuditDelegate = 'ApplyRecord', 'Create', 'FolderBind', 'HardDelete', 'Move', 'MailItemsAccessed', 'MoveToDeletedItems', 'SendAs', 'SendOnBehalf', 'SoftDelete', 'Update', 'UpdateFolderPermissions', 'UpdateInboxRules'
+                AuditOwner    = 'ApplyRecord', 'Create', 'HardDelete', 'MailboxLogin', 'Move', 'MailItemsAccessed', 'MoveToDeletedItems', 'Send', 'SoftDelete', 'Update', 'UpdateCalendarDelegation', 'UpdateFolderPermissions', 'UpdateInboxRules'
+            }
+            $mailboxes = @(Get-EXOMailbox -PropertySets Audit, Minimum -ResultSize Unlimited | Where-Object { "$($_.RecipientTypeDetails)" -eq 'UserMailbox' })
+            $probe = $mailboxes | Select-Object -First 1
+            $missingProps = if ($probe) { @(@($expected.Keys) + 'AuditEnabled' | Where-Object { $null -eq $probe.PSObject.Properties[$_] }) } else { @() }
+            if ($missingProps.Count) { throw "Get-EXOMailbox did not return: $($missingProps -join ', ')." }
+            $bad = foreach ($m in $mailboxes) {
+                $problems = @()
+                if (-not $m.AuditEnabled) { $problems += 'auditing is off' }
+                foreach ($type in 'AuditAdmin', 'AuditDelegate', 'AuditOwner') {
+                    $missing = @($expected[$type] | Where-Object { $_ -notin @($m.$type) })
+                    if ($missing.Count) { $problems += "$type missing $($missing -join ', ')" }
+                }
+                if ($problems.Count) { "$($m.UserPrincipalName) - $($problems -join '; ')" }
+            }
+            $shown = @($bad | Select-Object -First 100)
+            if (@($bad).Count -gt 100) { $shown += "... and $(@($bad).Count - 100) more" }
+            New-Finding -Id 'EXO-014' -Status $(if (@($bad).Count) { 'Gap' } else { 'Pass' }) -AffectedObjects $shown `
+                -Detail "$(@($bad).Count) of $($mailboxes.Count) user mailbox(es) do not audit every action CIS expects (the default set for owner, delegate and admin actions)."
         }
     }
     finally {

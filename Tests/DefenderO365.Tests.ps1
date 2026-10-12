@@ -3,6 +3,9 @@
 # Offline tests for Private/Get-DefenderO365Gaps.ps1 (Invoke-DefenderO365Checks) using fake Exchange cmdlets: no tenant, no session.
 
 BeforeDiscovery {
+    $ft119 = (1..119 | ForEach-Object { "t$_" }) -join '","'
+    $ft120 = (1..120 | ForEach-Object { "t$_" }) -join '","'
+    $okOutbound = '"RecipientLimitExternalPerHour":500,"RecipientLimitInternalPerHour":1000,"RecipientLimitPerDay":1000,"ActionWhenThresholdReached":"BlockUser","NotifyOutboundSpamRecipients":["sec@contoso.com"]'
     # Each case overrides one or more cmdlets of an otherwise healthy tenant and states the expected result for one finding.
     $script:Cases = @(
         # DFO-001 Safe Attachments
@@ -34,8 +37,8 @@ BeforeDiscovery {
         # DFO-007 outbound notifications
         @{ Name = 'DFO-007 gap: blocked senders not notified'; Id = 'DFO-007'; Status = 'Gap';  Set = @{ 'Get-HostedOutboundSpamFilterPolicy' = '[{"Name":"Default","NotifyOutboundSpam":false}]' } }
         # DFO-008 preset policies
-        @{ Name = 'DFO-008 gap: no preset rules';              Id = 'DFO-008'; Status = 'Gap';  Set = @{ 'Get-EOPProtectionPolicyRule' = '[]' } }
-        @{ Name = 'DFO-008 gap: Standard preset disabled';     Id = 'DFO-008'; Status = 'Gap';  Set = @{ 'Get-EOPProtectionPolicyRule' = '[{"Name":"Standard Preset Security Policy","State":"Disabled"}]' } }
+        @{ Name = 'DFO-008 gap: no preset rules';              Id = 'DFO-008'; Status = 'Gap';  Set = @{ 'Get-EOPProtectionPolicyRule' = '[]'; 'Get-ATPProtectionPolicyRule' = '[]' } }
+        @{ Name = 'DFO-008 gap: Standard preset disabled';     Id = 'DFO-008'; Status = 'Gap';  Set = @{ 'Get-EOPProtectionPolicyRule' = '[{"Name":"Standard Preset Security Policy","State":"Disabled"}]'; 'Get-ATPProtectionPolicyRule' = '[]' } }
         @{ Name = 'DFO-008 pass: Strict preset enabled';       Id = 'DFO-008'; Status = 'Pass'; Set = @{ 'Get-EOPProtectionPolicyRule' = '[{"Name":"Strict Preset Security Policy","State":"Enabled"}]' } }
         @{ Name = 'DFO-008 pass: preset found only in the ATP rules'; Id = 'DFO-008'; Status = 'Pass'; Set = @{ 'Get-EOPProtectionPolicyRule' = '[]'; 'Get-ATPProtectionPolicyRule' = '[{"Name":"Strict Preset Security Policy","State":"Enabled"}]' } }
         # DFO-009 / DFO-010 mail flow rules
@@ -55,6 +58,32 @@ BeforeDiscovery {
         @{ Name = 'DFO-014 pass: reporting on';                Id = 'DFO-014'; Status = 'Pass'; Set = @{} }
         @{ Name = 'DFO-014 NotAssessed (not a pass): setting not returned'; Id = 'DFO-014'; Status = 'NotAssessed'; Set = @{ 'Get-ReportSubmissionPolicy' = '{"Name":"DefaultReportSubmissionPolicy"}' } }
         @{ Name = 'DFO-014 NotAssessed (not a pass): no policy object returned'; Id = 'DFO-014'; Status = 'NotAssessed'; Set = @{ 'Get-ReportSubmissionPolicy' = '[]' } }
+        # DFO-015 / DFO-016 anti-malware (CIS 2.1.3, 2.1.11)
+        @{ Name = 'DFO-015 gap: administrator notification off'; Id = 'DFO-015'; Status = 'Gap'; Set = @{ 'Get-MalwareFilterPolicy' = '[{"Name":"Default","EnableFileFilter":true,"ZapEnabled":true,"EnableInternalSenderAdminNotifications":false,"InternalSenderAdminAddress":null,"FileTypes":["a"]}]' } }
+        @{ Name = 'DFO-015 gap: notification on but no address'; Id = 'DFO-015'; Status = 'Gap'; Set = @{ 'Get-MalwareFilterPolicy' = '[{"Name":"Default","EnableFileFilter":true,"ZapEnabled":true,"EnableInternalSenderAdminNotifications":true,"InternalSenderAdminAddress":"","FileTypes":["a"]}]' } }
+        @{ Name = 'DFO-015 gap: one custom policy does not notify'; Id = 'DFO-015'; Status = 'Gap'; Set = @{ 'Get-MalwareFilterPolicy' = '[{"Name":"Default","EnableFileFilter":true,"ZapEnabled":true,"EnableInternalSenderAdminNotifications":true,"InternalSenderAdminAddress":"s@c.com","FileTypes":["a"]},{"Name":"Custom","EnableFileFilter":true,"ZapEnabled":true,"EnableInternalSenderAdminNotifications":false,"InternalSenderAdminAddress":null,"FileTypes":["a"]}]' } }
+        @{ Name = 'DFO-015 NotAssessed: notification properties not returned'; Id = 'DFO-015'; Status = 'NotAssessed'; Set = @{ 'Get-MalwareFilterPolicy' = '[{"Name":"Default","EnableFileFilter":true,"ZapEnabled":true}]' } }
+        @{ Name = 'DFO-016 gap: 119 file types';               Id = 'DFO-016'; Status = 'Gap';  Set = @{ 'Get-MalwareFilterPolicy' = ('[{"Name":"Default","EnableFileFilter":true,"ZapEnabled":true,"EnableInternalSenderAdminNotifications":true,"InternalSenderAdminAddress":"s@c.com","FileTypes":["' + $ft119 + '"]}]') } }
+        @{ Name = 'DFO-016 pass: 120 file types';              Id = 'DFO-016'; Status = 'Pass'; Set = @{ 'Get-MalwareFilterPolicy' = ('[{"Name":"Default","EnableFileFilter":true,"ZapEnabled":true,"EnableInternalSenderAdminNotifications":true,"InternalSenderAdminAddress":"s@c.com","FileTypes":["' + $ft120 + '"]}]') } }
+        @{ Name = 'DFO-016 gap: attachment filter off';        Id = 'DFO-016'; Status = 'Gap';  Set = @{ 'Get-MalwareFilterPolicy' = ('[{"Name":"Default","EnableFileFilter":false,"ZapEnabled":true,"EnableInternalSenderAdminNotifications":true,"InternalSenderAdminAddress":"s@c.com","FileTypes":["' + $ft120 + '"]}]') } }
+        # DFO-017 outbound limits (CIS 2.1.15)
+        @{ Name = 'DFO-017 pass: limits at the maximum';       Id = 'DFO-017'; Status = 'Pass'; Set = @{ 'Get-HostedOutboundSpamFilterPolicy' = ('[{"Name":"Default","IsDefault":true,"NotifyOutboundSpam":true,' + $okOutbound + '}]') } }
+        @{ Name = 'DFO-017 gap: limit 0 means the service default'; Id = 'DFO-017'; Status = 'Gap'; Set = @{ 'Get-HostedOutboundSpamFilterPolicy' = '[{"Name":"Default","IsDefault":true,"RecipientLimitExternalPerHour":0,"RecipientLimitInternalPerHour":1000,"RecipientLimitPerDay":1000,"ActionWhenThresholdReached":"BlockUser","NotifyOutboundSpamRecipients":["s@c.com"]}]' } }
+        @{ Name = 'DFO-017 gap: external limit 501';           Id = 'DFO-017'; Status = 'Gap';  Set = @{ 'Get-HostedOutboundSpamFilterPolicy' = '[{"Name":"Default","IsDefault":true,"RecipientLimitExternalPerHour":501,"RecipientLimitInternalPerHour":1000,"RecipientLimitPerDay":1000,"ActionWhenThresholdReached":"BlockUser","NotifyOutboundSpamRecipients":["s@c.com"]}]' } }
+        @{ Name = 'DFO-017 gap: internal limit 1001';          Id = 'DFO-017'; Status = 'Gap';  Set = @{ 'Get-HostedOutboundSpamFilterPolicy' = '[{"Name":"Default","IsDefault":true,"RecipientLimitExternalPerHour":500,"RecipientLimitInternalPerHour":1001,"RecipientLimitPerDay":1000,"ActionWhenThresholdReached":"BlockUser","NotifyOutboundSpamRecipients":["s@c.com"]}]' } }
+        @{ Name = 'DFO-017 gap: daily limit 1001';             Id = 'DFO-017'; Status = 'Gap';  Set = @{ 'Get-HostedOutboundSpamFilterPolicy' = '[{"Name":"Default","IsDefault":true,"RecipientLimitExternalPerHour":500,"RecipientLimitInternalPerHour":1000,"RecipientLimitPerDay":1001,"ActionWhenThresholdReached":"BlockUser","NotifyOutboundSpamRecipients":["s@c.com"]}]' } }
+        @{ Name = 'DFO-017 gap: only blocked for the day';     Id = 'DFO-017'; Status = 'Gap';  Set = @{ 'Get-HostedOutboundSpamFilterPolicy' = '[{"Name":"Default","IsDefault":true,"RecipientLimitExternalPerHour":500,"RecipientLimitInternalPerHour":1000,"RecipientLimitPerDay":1000,"ActionWhenThresholdReached":"BlockUserForToday","NotifyOutboundSpamRecipients":["s@c.com"]}]' } }
+        @{ Name = 'DFO-017 gap: no notification mailbox';      Id = 'DFO-017'; Status = 'Gap';  Set = @{ 'Get-HostedOutboundSpamFilterPolicy' = '[{"Name":"Default","IsDefault":true,"RecipientLimitExternalPerHour":500,"RecipientLimitInternalPerHour":1000,"RecipientLimitPerDay":1000,"ActionWhenThresholdReached":"BlockUser","NotifyOutboundSpamRecipients":[]}]' } }
+        @{ Name = 'DFO-017 NotAssessed: limits not returned';  Id = 'DFO-017'; Status = 'NotAssessed'; Set = @{ 'Get-HostedOutboundSpamFilterPolicy' = '[{"Name":"Default","IsDefault":true,"NotifyOutboundSpam":true}]' } }
+        # DFO-018 priority account protection (CIS 2.4.1, tenant switch only)
+        @{ Name = 'DFO-018 gap: priority account protection off'; Id = 'DFO-018'; Status = 'Gap'; Set = @{ 'Get-EmailTenantSettings' = '{"EnablePriorityAccountProtection":false}' } }
+        @{ Name = 'DFO-018 NotAssessed: setting not returned'; Id = 'DFO-018'; Status = 'NotAssessed'; Set = @{ 'Get-EmailTenantSettings' = '{"Other":1}' } }
+        # DFO-019 Strict preset on priority accounts (CIS 2.4.2)
+        @{ Name = 'DFO-019 gap: Strict preset disabled';       Id = 'DFO-019'; Status = 'Gap';  Set = @{ 'Get-ATPProtectionPolicyRule' = '[{"Name":"Strict Preset Security Policy","State":"Disabled","SentTo":["ceo@c.com"]}]' } }
+        @{ Name = 'DFO-019 gap: Strict preset assigned to nobody'; Id = 'DFO-019'; Status = 'Gap'; Set = @{ 'Get-EOPProtectionPolicyRule' = '[{"Name":"Strict Preset Security Policy","State":"Enabled","SentTo":null,"SentToMemberOf":null,"RecipientDomainIs":null}]' } }
+        @{ Name = 'DFO-019 gap: no Defender for Office 365 Strict rule'; Id = 'DFO-019'; Status = 'Gap'; Set = @{ 'Get-ATPProtectionPolicyRule' = '[]' } }
+        @{ Name = 'DFO-019 pass: assigned through a group';    Id = 'DFO-019'; Status = 'Pass'; Set = @{ 'Get-EOPProtectionPolicyRule' = '[{"Name":"Strict Preset Security Policy","State":"Enabled","SentToMemberOf":["vips@c.com"]}]' } }
+        @{ Name = 'DFO-019 pass: assigned through a domain';   Id = 'DFO-019'; Status = 'Pass'; Set = @{ 'Get-ATPProtectionPolicyRule' = '[{"Name":"Strict Preset Security Policy","State":"Enabled","RecipientDomainIs":["vip.c.com"]}]' } }
     )
 }
 
@@ -71,10 +100,12 @@ BeforeAll {
             'Get-SafeAttachmentPolicy'           = (J '[{"Name":"Built-In Protection Policy","Enable":true,"Action":"DynamicDelivery"}]')
             'Get-AtpPolicyForO365'               = (J '{"EnableATPForSPOTeamsODB":true,"EnableSafeDocs":true,"AllowSafeDocsOpen":false}')
             'Get-SafeLinksPolicy'                = (J '[{"Name":"P","EnableSafeLinksForEmail":true,"EnableSafeLinksForOffice":true,"EnableSafeLinksForTeams":true,"DoNotAllowClickThrough":true,"DoNotTrackUserClicks":false,"ScanUrls":true}]')
-            'Get-MalwareFilterPolicy'            = (J '[{"Name":"Default","EnableFileFilter":true,"ZapEnabled":true}]')
+            'Get-MalwareFilterPolicy'            = (J ('[{"Name":"Default","EnableFileFilter":true,"ZapEnabled":true,"EnableInternalSenderAdminNotifications":true,"InternalSenderAdminAddress":"sec@contoso.com","FileTypes":["' + ((1..130 | ForEach-Object { "t$_" }) -join '","') + '"]}]'))
             'Get-HostedContentFilterPolicy'      = (J '[{"Name":"Default","AllowedSenders":[],"AllowedSenderDomains":[],"BulkThreshold":6,"HighConfidencePhishAction":"Quarantine","PhishZapEnabled":true,"SpamZapEnabled":true}]')
-            'Get-HostedOutboundSpamFilterPolicy' = (J '[{"Name":"Default","NotifyOutboundSpam":true}]')
-            'Get-EOPProtectionPolicyRule'        = (J '[{"Name":"Standard Preset Security Policy","State":"Enabled"}]')
+            'Get-HostedOutboundSpamFilterPolicy' = (J '[{"Name":"Default","IsDefault":true,"NotifyOutboundSpam":true,"RecipientLimitExternalPerHour":400,"RecipientLimitInternalPerHour":800,"RecipientLimitPerDay":800,"ActionWhenThresholdReached":"BlockUser","NotifyOutboundSpamRecipients":["sec@contoso.com"]}]')
+            'Get-EOPProtectionPolicyRule'        = (J '[{"Name":"Standard Preset Security Policy","State":"Enabled"},{"Name":"Strict Preset Security Policy","State":"Enabled","SentTo":["ceo@contoso.com"]}]')
+            'Get-ATPProtectionPolicyRule'        = (J '[{"Name":"Strict Preset Security Policy","State":"Enabled","SentTo":["ceo@contoso.com"]}]')
+            'Get-EmailTenantSettings'            = (J '{"EnablePriorityAccountProtection":true}')
             'Get-TransportRule'                  = (J '[]')
             'Get-HostedConnectionFilterPolicy'   = (J '[{"Name":"Default","IPAllowList":[],"EnableSafeList":false}]')
             'Get-ExternalInOutlook'              = (J '{"Enabled":true}')
@@ -98,9 +129,9 @@ Describe 'Defender for Office 365 checks' {
         (Invoke-Checks -Set $Set)[$Id].Status | Should -Be $Status
     }
 
-    It 'a healthy tenant passes all 14 checks, each reported exactly once' {
+    It 'a healthy tenant passes all 19 checks, each reported exactly once' {
         $r = Invoke-Checks
-        $r.Keys.Count | Should -Be 14
+        $r.Keys.Count | Should -Be 19
         ($r.Values | Where-Object Status -ne 'Pass') | Should -BeNullOrEmpty
     }
 
@@ -141,7 +172,7 @@ Describe 'Defender for Office 365 checks' {
 }
 
 Describe 'Get-DefenderO365Gaps session handling' {
-    It 'reports all 14 checks NotAssessed with the reason when Exchange cannot be reached' {
+    It 'reports all 19 checks NotAssessed with the reason when Exchange cannot be reached' {
         Set-FakeCmdlets -Data @{ 'Connect-ExchangeOnline' = { throw 'sign-in cancelled' } }
         $r = InModuleScope M365GapAssessment {
             # Stand-ins so the session helper sees the module as installed and uses the fake Connect-ExchangeOnline.
@@ -150,7 +181,7 @@ Describe 'Get-DefenderO365Gaps session handling' {
             $script:ExchangeSessionOpen = $false
             try { Get-DefenderO365Gaps 3>$null } finally { Remove-Item Function:\Get-Module, Function:\Import-Module -ErrorAction SilentlyContinue }
         }
-        @($r).Count | Should -Be 14
+        @($r).Count | Should -Be 19
         ($r | Where-Object Status -ne 'NotAssessed') | Should -BeNullOrEmpty
         $r[0].Detail | Should -BeLike '*sign-in cancelled*'
     }

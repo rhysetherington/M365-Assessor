@@ -166,6 +166,46 @@
       ]
     },
     {
+      "id": "DFO-015", "domain": "Defender for Office 365", "name": "Administrators are not notified when an internal user sends malware", "severity": "Low",
+      "scf": "MON-01", "nistCsf": "DE.CM-01", "cis": ["2.1.3"],
+      "remediation": [
+        "Defender portal > Email & collaboration > Policies & rules > Threat policies > Anti-malware > edit each policy > Notifications: turn on 'Notify an admin about undelivered messages from internal senders' and enter a monitored address.",
+        "An internal user sending malware usually means a compromised account."
+      ]
+    },
+    {
+      "id": "DFO-016", "domain": "Defender for Office 365", "name": "Common attachment filter lists fewer than 120 file types", "severity": "Low",
+      "scf": "END-04", "nistCsf": "PR.PS-05", "cisPartial": ["2.1.11"],
+      "remediation": [
+        "Defender portal > Email & collaboration > Policies & rules > Threat policies > Anti-malware > edit the policy > Protection settings: turn on the common attachments filter and select a comprehensive list of file types (CIS expects at least 120).",
+        "Compare against the extension list in your licensed copy of the CIS benchmark (this check only counts the types)."
+      ]
+    },
+    {
+      "id": "DFO-017", "domain": "Defender for Office 365", "name": "Outbound spam limits are not set or do not block a compromised sender", "severity": "Medium",
+      "scf": "NET-08", "nistCsf": "DE.CM-01", "cis": ["2.1.15"],
+      "remediation": [
+        "Defender portal > Email & collaboration > Policies & rules > Threat policies > Anti-spam > Anti-spam outbound policy (Default): external limit 500 or less per hour, internal limit 1000 or less per hour, daily limit 1000 or less, action 'Restrict the user from sending mail'.",
+        "Add a monitored mailbox under notifications so a blocked user is noticed. A limit of 0 means the service default, which is not a configured limit."
+      ]
+    },
+    {
+      "id": "DFO-018", "domain": "Defender for Office 365", "name": "Priority account protection is not enabled", "severity": "Low",
+      "scf": "IAC-21", "nistCsf": "PR.AA-05", "cisPartial": ["2.4.1"],
+      "remediation": [
+        "Defender portal > Settings > E-mail & collaboration > Priority account protection: turn it on, then tag executives and other high-value accounts as priority accounts.",
+        "CIS also expects alert policies for priority accounts (phish and malware, high severity); create them in the Defender portal alert policies."
+      ]
+    },
+    {
+      "id": "DFO-019", "domain": "Defender for Office 365", "name": "Strict preset security policy is not applied to priority accounts", "severity": "Medium",
+      "scf": "CFG-02", "nistCsf": "PR.PS-01", "cis": ["2.4.2"], "license": "DefenderO365",
+      "remediation": [
+        "Defender portal > Email & collaboration > Policies & rules > Threat policies > Preset security policies > Strict protection: turn it on and assign it to priority accounts (users, groups or domains).",
+        "The Strict preset must be enabled in both its Exchange Online Protection and Defender for Office 365 parts."
+      ]
+    },
+    {
       "id": "EML-001", "domain": "Email Security", "name": "SPF missing or weak on email domains", "severity": "Medium",
       "scf": "NET-12", "nistCsf": "PR.IR-01", "cis": ["2.1.8"],
       "remediation": [
@@ -879,6 +919,55 @@
       "remediation": [
         "Exchange Online PowerShell: run Set-OwaMailboxPolicy -Identity <policy> -AdditionalStorageProvidersAvailable $false for every Outlook on the web policy that allows them.",
         "Confirm with Get-OwaMailboxPolicy | Format-Table Name, AdditionalStorageProvidersAvailable. Users can then attach files only from OneDrive, SharePoint and their device, not Dropbox, Box, Google Drive or similar."
+      ]
+    },
+    {
+      "id": "EXO-009", "domain": "Exchange Online", "name": "Direct Send is not rejected", "severity": "Medium",
+      "scf": "NET-04", "nistCsf": "PR.IR-01", "cis": ["6.5.5"],
+      "remediation": [
+        "Exchange Online PowerShell: Set-OrganizationConfig -RejectDirectSend $true.",
+        "First find what legitimately uses Direct Send (printers, scanners, line-of-business apps) and move it to an authenticated connector or SMTP AUTH client submission, or it will stop working.",
+        "Direct Send lets anyone on the internet send mail that appears to come from your domain straight to your mailboxes."
+      ]
+    },
+    {
+      "id": "EXO-010", "domain": "Exchange Online", "name": "MailTips are not fully enabled", "severity": "Low",
+      "scf": "SAT-02", "nistCsf": "PR.AT-01", "cis": ["6.5.2"],
+      "remediation": [
+        "Exchange Online PowerShell: Set-OrganizationConfig -MailTipsAllTipsEnabled $true -MailTipsExternalRecipientsTipsEnabled $true -MailTipsGroupMetricsEnabled $true.",
+        "MailTips warn users before they send to external recipients or large groups, which prevents some data leaks."
+      ]
+    },
+    {
+      "id": "EXO-011", "domain": "Exchange Online", "name": "Users can add personal email accounts and calendars in Outlook on the web", "severity": "Medium",
+      "scf": "DCH-13", "nistCsf": "PR.DS-01", "cis": ["6.3.2"],
+      "remediation": [
+        "Exchange Online PowerShell: Set-OwaMailboxPolicy -Identity OwaMailboxPolicy-Default -PersonalAccountsEnabled $false -PersonalAccountCalendarsEnabled $false.",
+        "Connected personal accounts bypass the data controls applied to the work mailbox."
+      ]
+    },
+    {
+      "id": "EXO-012", "domain": "Exchange Online", "name": "Users can install Outlook add-ins themselves", "severity": "Medium",
+      "scf": "CFG-04", "nistCsf": "PR.PS-01", "cis": ["6.3.1"],
+      "remediation": [
+        "Exchange admin center > Roles > User roles > Default Role Assignment Policy: clear My Custom Apps, My Marketplace Apps and My ReadWriteMailbox Apps.",
+        "Publish approved add-ins to users centrally (Microsoft 365 admin center > Settings > Integrated apps) instead."
+      ]
+    },
+    {
+      "id": "EXO-013", "domain": "Exchange Online", "name": "Accounts are excluded from mailbox auditing (AuditBypassEnabled)", "severity": "High",
+      "scf": "MON-03", "nistCsf": "DE.CM-09", "cis": ["6.1.3"],
+      "remediation": [
+        "Review each account listed. Remove the exclusion with: Set-MailboxAuditBypassAssociation -Identity <account> -AuditBypassEnabled $false.",
+        "Keep an exception only for a documented service account, and monitor that account another way."
+      ]
+    },
+    {
+      "id": "EXO-014", "domain": "Exchange Online", "name": "Mailbox audit does not record every expected action", "severity": "Medium",
+      "scf": "MON-03", "nistCsf": "DE.CM-09", "cis": ["6.1.2"],
+      "remediation": [
+        "Exchange Online PowerShell: Set-Mailbox -Identity <mailbox> -AuditEnabled $true, and add the missing actions with -AuditAdmin, -AuditDelegate and -AuditOwner (Set-Mailbox ... -AuditOwner @{Add='MailItemsAccessed'}).",
+        "Set the actions for all user mailboxes. Unaudited actions cannot be investigated after an incident."
       ]
     },
     {
