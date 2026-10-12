@@ -799,6 +799,24 @@
       ]
     },
     {
+      "id": "ENT-USR-007", "domain": "Entra ID", "name": "Administrator accounts are synced from on-premises Active Directory", "severity": "High",
+      "scf": "IAC-21", "nistCsf": "PR.AA-05", "cis": ["1.1.1"],
+      "remediation": [
+        "Create separate cloud-only accounts (for example admin-name@tenant.onmicrosoft.com) for administrative work and assign the admin roles to those accounts instead of to synced accounts.",
+        "Remove the admin role from the synced account once the cloud-only account works. A compromised on-premises directory otherwise becomes a compromised tenant.",
+        "Protect the new accounts with phishing-resistant MFA and PIM; keep break-glass accounts cloud-only as well."
+      ]
+    },
+    {
+      "id": "ENT-USR-008", "domain": "Entra ID", "name": "Administrator accounts hold licences with mail, Office or Teams enabled", "severity": "Low",
+      "scf": "IAC-21", "nistCsf": "PR.AA-05", "cis": ["1.1.4"],
+      "remediation": [
+        "Microsoft 365 admin center > Users > Active users: give permanent admin accounts a licence without applications (Microsoft Entra ID P1 or P2), or turn off the Exchange, SharePoint, Teams and Office plans on their licence.",
+        "Where staff need a mailbox, use a separate everyday account and make the admin role eligible through PIM instead of permanently assigned; eligible-only admins are exempt from this check.",
+        "Reduces phishing and malware exposure of admin accounts, which otherwise receive email and open documents."
+      ]
+    },
+    {
       "id": "EXO-001", "domain": "Exchange Online", "name": "Mail auto-forwarding not blocked", "severity": "High",
       "scf": "NET-12", "nistCsf": "PR.DS-02", "cis": ["6.2.1"],
       "remediation": [

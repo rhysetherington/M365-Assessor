@@ -99,6 +99,9 @@ function Get-EntraIDGaps {
             -Detail "$($gaUsers.Count) distinct users hold Global Administrator (active or activated). Threshold: 5."
     }
 
+    # --- Administrator account hygiene (own file) ---------------------------------------------
+    Get-AdminAccountHygieneGaps
+
     # --- Stale eligible PIM assignments --------------------------------------------------------
     Write-Progress -Id 2 -ParentId 1 -Activity 'Entra ID' -Status 'Stale eligible assignments' -PercentComplete 30
     Invoke-Collector -Name 'Stale eligible assignments' -FindingIds 'ENT-USR-006' -Script {
