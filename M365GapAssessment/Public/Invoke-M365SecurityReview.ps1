@@ -78,6 +78,7 @@ function Invoke-M365SecurityReview {
 
         # Licensing is always read first (when possible) so later NotAssessed results can be explained by missing licences.
         $script:LicenseCapabilities = $null
+        Reset-CollectorCache
         $licensing = $null
         try { $licensing = Get-LicenseInventory }
         catch { Write-Warning "License inventory unavailable: $($_.Exception.Message)" }

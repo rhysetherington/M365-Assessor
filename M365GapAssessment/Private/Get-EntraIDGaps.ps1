@@ -27,7 +27,7 @@ function Get-EntraIDGaps {
     # --- Conditional Access -------------------------------------------------------------------
     Write-Progress -Id 2 -ParentId 1 -Activity 'Entra ID' -Status 'Conditional Access policies' -PercentComplete 5
     Invoke-Collector -Name 'Conditional Access' -FindingIds 'ENT-CA-001', 'ENT-CA-002', 'ENT-CA-003', 'ENT-CA-004' -Script {
-        $policies   = @(Get-GraphPagedResult -Uri '/v1.0/identity/conditionalAccess/policies')
+        $policies   = @(Get-ConditionalAccessPolicies)
         $enabled    = @($policies | Where-Object { $_.state -eq 'enabled' })
         $reportOnly = @($policies | Where-Object { $_.state -eq 'enabledForReportingButNotEnforced' })
 
@@ -61,12 +61,15 @@ function Get-EntraIDGaps {
                 elseif ($securityDefaults -eq $true) { 'Covered by Security Defaults, which blocks legacy authentication. No Conditional Access policy does so.' }
                 else { "No enabled policy blocks Exchange ActiveSync + other legacy clients for all users/apps, and Security Defaults is not enabled.$sdUnknown" })
 
-        $adminMfa = @($enabled | Where-Object {
+        # Policies that target admins on all apps and mention MFA; of those, only some actually guarantee it (see Test-PolicyEnforcesMfa).
+        $adminTargeted = @($enabled | Where-Object {
                 $c = $_.conditions
                 (($c.users.includeUsers -contains 'All') -or ($c.users.includeRoles -contains $globalAdminTemplateId)) -and
-                ($c.applications.includeApplications -contains 'All') -and
-                (($_.grantControls.builtInControls -contains 'mfa') -or ($null -ne $_.grantControls.authenticationStrength))
+                ($c.applications.includeApplications -contains 'All') -and (Test-PolicyMentionsMfa -Policy $_)
             })
+        $adminMfa = @($adminTargeted | Where-Object { Test-PolicyEnforcesMfa -Policy $_ })
+        $orRejected = @($adminTargeted | Where-Object { -not (Test-PolicyEnforcesMfa -Policy $_) })
+        if ($orRejected.Count -and -not $adminMfa.Count) { $sdUnknown += " Not counted because MFA is only one of several alternatives (operator OR): $($orRejected.displayName -join ', ')." }
         $adminPass = $adminMfa.Count -gt 0 -or $securityDefaults -eq $true
         New-Finding -Id 'ENT-CA-004' -Status $(if ($adminPass) { 'Pass' } else { 'Gap' }) `
             -Detail $(if ($adminMfa.Count) { "Enforced by: $($adminMfa.displayName -join ', ')" }

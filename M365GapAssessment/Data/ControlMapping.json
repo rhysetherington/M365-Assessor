@@ -8,6 +8,7 @@
       "remediation": [
         "Entra admin center > Protection > Conditional Access > Policies.",
         "Open each policy listed and review the report-only results under Insights and reporting.",
+        "If Security Defaults is enabled, disable it first (Entra admin center > Overview > Properties > Manage security defaults): Conditional Access policies cannot be enforced alongside it, so re-create its protections (admin MFA, all-user MFA, legacy block) as policies before turning it off.",
         "When the impact is understood and break-glass accounts are excluded, set 'Enable policy' to On.",
         "Retire report-only policies that are no longer needed."
       ]
@@ -495,7 +496,8 @@
       "id": "ENT-CA-005", "domain": "Entra ID", "name": "No Conditional Access policy requires a compliant or managed device", "severity": "Medium",
       "scf": "IAC-04", "nistCsf": "PR.AA-03", "cis": ["5.2.2.9"], "license": "EntraP1",
       "remediation": [
-        "Ensure devices are enrolled in Intune with a compliance policy.",
+        "Ensure devices are enrolled in Intune with a compliance policy. Do not enforce the policy before most devices are compliant, or users will be blocked.",
+        "If Security Defaults is enabled, disable it first: Conditional Access policies cannot be enforced alongside it.",
         "Conditional Access > New policy > Users: All users; Target: Office 365 (or all apps); Grant: Require device to be marked as compliant (or Entra hybrid joined).",
         "Start in report-only, exclude break-glass accounts, then enforce."
       ]
@@ -504,8 +506,9 @@
       "id": "ENT-CA-006", "domain": "Entra ID", "name": "No Conditional Access policy requires MFA for guest / external users", "severity": "High",
       "scf": "IAC-06", "nistCsf": "PR.AA-03", "license": "EntraP1",
       "remediation": [
+        "If Security Defaults is enabled, it applies MFA to guests only 'when necessary'. For guaranteed MFA, disable Security Defaults and use Conditional Access.",
         "Conditional Access > New policy > Users > Include: Guest or external users (select all types).",
-        "Target resources: All cloud apps. Grant: Require multifactor authentication (or an authentication strength).",
+        "Target resources: All cloud apps. Grant: Require multifactor authentication (or an authentication strength) as the ONLY grant control, or set the operator to 'Require all the selected controls'.",
         "Configure cross-tenant access inbound trust to accept partner MFA if appropriate."
       ]
     },
@@ -513,7 +516,7 @@
       "id": "ENT-CA-007", "domain": "Entra ID", "name": "No risk-based Conditional Access (sign-in risk / user risk)", "severity": "High",
       "scf": "MON-16", "nistCsf": "DE.CM-03", "cis": ["5.2.2.6", "5.2.2.7", "5.2.2.8"], "license": "EntraP2",
       "remediation": [
-        "Requires Entra ID P2 (Identity Protection).",
+        "Requires Entra ID P2 (Identity Protection). If Security Defaults is enabled, disable it first: Conditional Access policies cannot be enforced alongside it.",
         "Conditional Access > New policy > Conditions > Sign-in risk: Medium and above > Grant: Require MFA.",
         "Add a user-risk policy: High risk > Require password change + MFA (or block).",
         "Review Identity Protection > Risky users / Risk detections weekly."

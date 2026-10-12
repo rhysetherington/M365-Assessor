@@ -47,22 +47,26 @@ function Get-EntraBaselineGaps {
     # --- Security Defaults / baseline MFA ---------------------------------------------------------------
     Write-Progress -Id 2 -ParentId 1 -Activity 'Entra baseline' -Status 'Security Defaults' -PercentComplete 5
     Invoke-Collector -Name 'Security Defaults' -FindingIds 'ENT-POL-006' -Script {
-        $sd = Invoke-GraphRequestWithRetry -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy'
+        $sdEnabled = Get-SecurityDefaultsState
+        if ($null -eq $sdEnabled) { throw 'The Security Defaults policy could not be read.' }
         $caNote = ''
         $mfaForAll = @()
         try {
-            $mfaForAll = @(Get-GraphPagedResult -Uri '/v1.0/identity/conditionalAccess/policies' | Where-Object {
+            $mfaForAll = @(Get-ConditionalAccessPolicies | Where-Object {
                     $_.state -eq 'enabled' -and ($_.conditions.users.includeUsers -contains 'All') -and
-                    ($_.conditions.applications.includeApplications -contains 'All') -and
-                    (($_.grantControls.builtInControls -contains 'mfa') -or ($null -ne $_.grantControls.authenticationStrength))
+                    ($_.conditions.applications.includeApplications -contains 'All') -and (Test-PolicyEnforcesMfa -Policy $_)
                 })
         }
         catch { $caNote = ' Conditional Access policies could not be read (licence or permission), so only Security Defaults was evaluated.' }
 
-        $protected = [bool]$sd.isEnabled -or $mfaForAll.Count -gt 0
-        $how = if ($sd.isEnabled) { 'Security Defaults is enabled' } elseif ($mfaForAll.Count) { "Conditional Access MFA for all users: $($mfaForAll.displayName -join ', ')" } else { 'Security Defaults is disabled and no enabled Conditional Access policy requires MFA for all users and apps' }
+        $protected = $sdEnabled -or $mfaForAll.Count -gt 0
+        $how = if ($sdEnabled) { 'Security Defaults is enabled' } elseif ($mfaForAll.Count) { "Conditional Access MFA for all users: $($mfaForAll.displayName -join ', ')" } else { 'Security Defaults is disabled and no enabled Conditional Access policy requires MFA for all users and apps' }
+        # Microsoft recommends Conditional Access over Security Defaults once the tenant is licensed for it (Entra ID P1/P2).
+        $licenceNote = if ($sdEnabled -and (Test-TenantCapability -Name 'EntraP1') -eq $true) {
+            ' The tenant is licensed for Conditional Access (Entra ID P1/P2) but still relies on Security Defaults; Microsoft recommends Conditional Access for licensed tenants (disable Security Defaults first).'
+        } else { '' }
         New-Finding -Id 'ENT-POL-006' -Status $(if ($protected) { 'Pass' } else { 'Gap' }) `
-            -AffectedObjects $(if ($protected) { @() } else { @($how) }) -Detail "$how.$caNote"
+            -AffectedObjects $(if ($protected) { @() } else { @($how) }) -Detail "$how.$caNote$licenceNote"
     }
 
     # --- SSPR ----------------------------------------------------------------------------------------------
@@ -116,7 +120,7 @@ function Get-EntraBaselineGaps {
     # --- Emergency access accounts ----------------------------------------------------------------------
     Write-Progress -Id 2 -ParentId 1 -Activity 'Entra baseline' -Status 'Emergency access accounts' -PercentComplete 75
     Invoke-Collector -Name 'Emergency access accounts' -FindingIds 'ENT-CA-009' -Script {
-        $policies = @(Get-GraphPagedResult -Uri '/v1.0/identity/conditionalAccess/policies' | Where-Object { $_.state -eq 'enabled' })
+        $policies = @(Get-ConditionalAccessPolicies | Where-Object { $_.state -eq 'enabled' })
 
         # Expand excluded groups once so group-based exclusions count for their members.
         $groupMembers = @{}

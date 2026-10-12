@@ -29,7 +29,8 @@ Import-Module ./M365GapAssessment/M365GapAssessment.psd1 -Force
 # Interactive sign-in, JSON + Markdown + HTML into ./M365Assessment/<tenantId>_<timestamp>/
 Invoke-M365SecurityReview -TenantId contoso.onmicrosoft.com -Format JSON,Markdown,HTML
 
-# Device code (headless / jump host)
+# Device code (headless / jump host). Blocked in tenants with Security Defaults enabled, and in new tenants from July 2026:
+# use interactive sign-in or a certificate there.
 Invoke-M365SecurityReview -TenantId contoso.onmicrosoft.com -UseDeviceAuthentication
 
 # App-only with certificate (unattended)
@@ -85,7 +86,7 @@ personal Microsoft accounts are rejected. For app-only use, grant the equivalent
 | `Teams` | **Opt-in** (`-Domain ...,Teams`). External federation, unmanaged/trial tenant access, anonymous join and lobby, meeting chat, presenter and recording controls, third-party storage, email into channels, user security reporting. Needs `Install-Module MicrosoftTeams` and a separate interactive sign-in (Get-* cmdlets only). |
 | `SharePoint` | Tenant external sharing level, guest resharing, domain restrictions, legacy auth, unmanaged-device sync (Graph `/admin/sharepoint/settings`; needs the `SharePointTenantSettings.Read.All` scope, which prompts for consent on the next sign-in). |
 | `EntraID` | Conditional Access baseline, PIM permanence, MFA registration, stale accounts, app credentials and application permissions, guests in privileged groups |
-| `EntraPolicy` | Baseline sign-in protection (Security Defaults or all-user MFA), SSPR, smart lockout, password expiry, public Microsoft 365 groups, emergency-access accounts (rule pending), user/admin consent, app and tenant creation, guest settings, delegated tenant-wide grants, authentication methods, password protection, CA depth (device, guest MFA, risk, locations), Global Admin PIM settings, cross-tenant access, stale guests, directory sync, risky users, access reviews, Terms of use |
+| `EntraPolicy` | Baseline sign-in protection (Security Defaults or all-user MFA), SSPR, smart lockout, password expiry, public Microsoft 365 groups, emergency-access accounts (nominated from Conditional Access exclusions; confirm manually), user/admin consent, app and tenant creation, guest settings, delegated tenant-wide grants, authentication methods, password protection, CA depth (device, guest MFA, risk, locations), Global Admin PIM settings, cross-tenant access, stale guests, directory sync, risky users, access reviews, Terms of use |
 | `Defender` | High alerts, active incidents, device compliance and encryption |
 | `SecureScore` | Score vs target, unimplemented controls |
 | `EmailDns` | SPF, DMARC, DKIM for verified custom domains |

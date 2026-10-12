@@ -37,6 +37,7 @@ function script:Invoke-WithFixture {
     param([object[]]$Fixture, [Parameter(Mandatory)][string]$Command)
     $findings = InModuleScope M365GapAssessment -Parameters @{ F = $Fixture; C = $Command } {
         $script:Fixture = $F
+        Reset-CollectorCache   # per-run caches must not leak between tests
         & ([scriptblock]::Create("$C 3>`$null"))
     }
     $byId = @{}

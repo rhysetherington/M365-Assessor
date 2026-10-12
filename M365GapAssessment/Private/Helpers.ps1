@@ -87,21 +87,75 @@ function Get-GraphPagedResult {
     $results.ToArray()
 }
 
+# --- Per-run cache for data several collectors read (Conditional Access policies, Security Defaults) ---------
+# Cleared at the start of each tenant by Invoke-M365SecurityReview so results never leak between tenants.
+function Reset-CollectorCache {
+    [CmdletBinding()]
+    param()
+    $script:CaPolicyCache = $null
+    $script:SecurityDefaultsCached = $false
+    $script:SecurityDefaultsCache = $null
+}
+
+function Get-ConditionalAccessPolicies {
+    <#
+    .SYNOPSIS
+        All Conditional Access policies (any state), fetched once per run. Callers filter by state themselves.
+        A failed read is not cached, so the error reaches each caller's Invoke-Collector.
+    #>
+    [CmdletBinding()]
+    param()
+    if ($null -eq $script:CaPolicyCache) {
+        $script:CaPolicyCache = @(Get-GraphPagedResult -Uri '/v1.0/identity/conditionalAccess/policies')
+    }
+    $script:CaPolicyCache
+}
+
 function Get-SecurityDefaultsState {
     <#
     .SYNOPSIS
-        $true / $false for the tenant's Security Defaults, or $null when the policy cannot be read.
+        $true / $false for the tenant's Security Defaults, or $null when the policy cannot be read. Cached per run.
     .DESCRIPTION
         Security Defaults requires MFA for administrators and blocks legacy authentication tenant-wide, so checks that look
         only at Conditional Access policies must take it into account to avoid reporting a gap that is already covered.
     #>
     [CmdletBinding()]
     param()
-    try {
-        $policy = Invoke-GraphRequestWithRetry -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy'
-        [bool]$policy.isEnabled
+    if (-not $script:SecurityDefaultsCached) {
+        try {
+            $policy = Invoke-GraphRequestWithRetry -Uri '/v1.0/policies/identitySecurityDefaultsEnforcementPolicy'
+            $script:SecurityDefaultsCache = [bool]$policy.isEnabled
+        }
+        catch { $script:SecurityDefaultsCache = $null }
+        $script:SecurityDefaultsCached = $true
     }
-    catch { $null }
+    $script:SecurityDefaultsCache
+}
+
+function Test-PolicyEnforcesMfa {
+    <#
+    .SYNOPSIS
+        $true when a Conditional Access policy actually guarantees MFA (or an authentication strength) for its targets.
+    .DESCRIPTION
+        Listing 'mfa' among the grant controls is not enough: with operator OR, any ONE of the listed controls satisfies the
+        policy ("MFA or compliant device"), so MFA is only guaranteed when it is the sole control or the operator is AND.
+    #>
+    [CmdletBinding()]
+    param([Parameter(Mandatory)]$Policy)
+    $g = $Policy.grantControls
+    if ($null -eq $g) { return $false }
+    $builtIn = @($g.builtInControls | Where-Object { $_ })
+    $hasStrength = $null -ne $g.authenticationStrength
+    if (-not (($builtIn -contains 'mfa') -or $hasStrength)) { return $false }
+    $alternatives = $builtIn.Count + $(if ($hasStrength) { 1 } else { 0 }) +
+        @($g.customAuthenticationFactors | Where-Object { $_ }).Count + @($g.termsOfUse | Where-Object { $_ }).Count
+    -not ($g.operator -eq 'OR' -and $alternatives -gt 1)
+}
+
+function Test-PolicyMentionsMfa {
+    # $true when MFA appears in the grant controls at all (whether or not it is guaranteed); used to explain rejected policies.
+    param([Parameter(Mandatory)]$Policy)
+    ($Policy.grantControls.builtInControls -contains 'mfa') -or ($null -ne $Policy.grantControls.authenticationStrength)
 }
 
 function Test-HasItems {

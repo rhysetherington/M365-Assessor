@@ -103,19 +103,45 @@ function Get-EntraPolicyGaps {
     # --- Conditional Access depth -------------------------------------------------------------------
     Write-Progress -Id 2 -ParentId 1 -Activity 'Entra policy' -Status 'Conditional Access depth' -PercentComplete 42
     Invoke-Collector -Name 'Conditional Access depth' -FindingIds 'ENT-CA-005', 'ENT-CA-006', 'ENT-CA-007', 'ENT-CA-008' -Script {
-        $enabled = @(Get-GraphPagedResult -Uri '/v1.0/identity/conditionalAccess/policies' | Where-Object { $_.state -eq 'enabled' })
+        $enabled = @(Get-ConditionalAccessPolicies | Where-Object { $_.state -eq 'enabled' })
         $locations = @(Get-GraphPagedResult -Uri '/v1.0/identity/conditionalAccess/namedLocations')
 
         $device = @($enabled | Where-Object { ($_.grantControls.builtInControls -contains 'compliantDevice') -or ($_.grantControls.builtInControls -contains 'domainJoinedDevice') })
+        # A compliant-device rule only works once devices are enrolled; say so when none are, so the reader does not enforce it blindly.
+        $noDevicesNote = ''
+        if (-not $device.Count) {
+            try {
+                if (-not @(Get-GraphPagedResult -Uri '/beta/deviceManagement/managedDevices?$select=id&$top=1' -MaxItems 1).Count) {
+                    $noDevicesNote = ' No Intune-managed devices were found: enrol devices and a compliance policy before enforcing this, or every user would be blocked.'
+                }
+            }
+            catch { }
+        }
         New-Finding -Id 'ENT-CA-005' -Status $(if ($device.Count) { 'Pass' } else { 'Gap' }) `
-            -Detail $(if ($device.Count) { "Enforced by: $($device.displayName -join ', ')" } else { 'No enabled policy requires a compliant or hybrid-joined device.' })
+            -Detail $(if ($device.Count) { "Enforced by: $($device.displayName -join ', ')" } else { "No enabled policy requires a compliant or hybrid-joined device.$noDevicesNote" })
 
-        $guestMfa = @($enabled | Where-Object {
+        $guestTargeted = @($enabled | Where-Object {
                 (($_.conditions.users.includeUsers -contains 'All') -or ($null -ne $_.conditions.users.includeGuestsOrExternalUsers)) -and
-                (($_.grantControls.builtInControls -contains 'mfa') -or ($null -ne $_.grantControls.authenticationStrength))
+                (Test-PolicyMentionsMfa -Policy $_)
             })
-        New-Finding -Id 'ENT-CA-006' -Status $(if ($guestMfa.Count) { 'Pass' } else { 'Gap' }) `
-            -Detail $(if ($guestMfa.Count) { "Covered by: $($guestMfa.displayName -join ', ')" } else { 'No enabled policy applies MFA to all users or to guest/external users.' })
+        $guestMfa = @($guestTargeted | Where-Object { Test-PolicyEnforcesMfa -Policy $_ })
+        $guestOrRejected = @($guestTargeted | Where-Object { -not (Test-PolicyEnforcesMfa -Policy $_) })
+        $guestParams = @{ Id = 'ENT-CA-006' }
+        if ($guestMfa.Count) {
+            $guestParams.Status = 'Pass'
+            $guestParams.Detail = "Covered by: $($guestMfa.displayName -join ', ')"
+        }
+        else {
+            $guestParams.Status = 'Gap'
+            $guestParams.Detail = 'No enabled policy applies MFA to all users or to guest/external users.'
+            if ($guestOrRejected.Count) { $guestParams.Detail += " Not counted because MFA is only one of several alternatives (operator OR): $($guestOrRejected.displayName -join ', ')." }
+            # Security Defaults still applies MFA to guests (treated like members), but only 'when necessary', so keep the Gap at lower severity.
+            if ((Get-SecurityDefaultsState) -eq $true) {
+                $guestParams.Severity = 'Medium'
+                $guestParams.Detail += ' Security Defaults is enabled and applies MFA to guests when Microsoft deems it necessary (not on every sign-in), so severity is reduced to Medium.'
+            }
+        }
+        New-Finding @guestParams
 
         if ((Test-TenantCapability -Name 'EntraP2') -eq $false) {
             New-Finding -Id 'ENT-CA-007' -Status NotAssessed -Detail 'Risk-based Conditional Access requires Entra ID P2 (Identity Protection).'

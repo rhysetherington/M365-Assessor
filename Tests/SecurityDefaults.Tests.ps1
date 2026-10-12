@@ -29,15 +29,15 @@ AfterAll { Remove-Module M365GapAssessment -Force -ErrorAction SilentlyContinue 
 Describe 'Get-SecurityDefaultsState' {
     It 'returns $true when enabled' {
         $f = ConvertTo-Fixture ([ordered]@{ 'identitySecurityDefaultsEnforcementPolicy' = (J '{"isEnabled":true}') })
-        InModuleScope M365GapAssessment -Parameters @{ F = $f } { $script:Fixture = $F; Get-SecurityDefaultsState } | Should -BeTrue
+        InModuleScope M365GapAssessment -Parameters @{ F = $f } { $script:Fixture = $F; Reset-CollectorCache; Get-SecurityDefaultsState } | Should -BeTrue
     }
     It 'returns $false when disabled' {
         $f = ConvertTo-Fixture ([ordered]@{ 'identitySecurityDefaultsEnforcementPolicy' = (J '{"isEnabled":false}') })
-        InModuleScope M365GapAssessment -Parameters @{ F = $f } { $script:Fixture = $F; Get-SecurityDefaultsState } | Should -BeFalse
+        InModuleScope M365GapAssessment -Parameters @{ F = $f } { $script:Fixture = $F; Reset-CollectorCache; Get-SecurityDefaultsState } | Should -BeFalse
     }
     It 'returns $null (not an error) when the policy cannot be read' {
         $f = ConvertTo-Fixture ([ordered]@{ 'identitySecurityDefaultsEnforcementPolicy' = { throw 'forbidden' } })
-        InModuleScope M365GapAssessment -Parameters @{ F = $f } { $script:Fixture = $F; Get-SecurityDefaultsState } | Should -BeNullOrEmpty
+        InModuleScope M365GapAssessment -Parameters @{ F = $f } { $script:Fixture = $F; Reset-CollectorCache; Get-SecurityDefaultsState } | Should -BeNullOrEmpty
     }
 }
 
