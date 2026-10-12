@@ -232,6 +232,42 @@
       ]
     },
     {
+      "id": "ENT-APP-005", "domain": "Entra ID", "name": "Application client secrets can still be added", "severity": "Medium",
+      "scf": "IAC-15", "nistCsf": "PR.AA-01", "cis": ["5.1.5.3"], "license": "EntraP1",
+      "remediation": [
+        "Microsoft Entra admin center > Entra ID > Enterprise apps > Security > Application policies (or PATCH /policies/defaultAppManagementPolicy). Turn on 'Block password addition'.",
+        "Restrictions apply to applications and to service principals separately; set both. Leave 'only apply to apps created after' empty so existing apps are covered, and plan to rotate credentials that break the new limits.",
+        "Prefer certificates or federated credentials (workload identity federation) over secrets."
+      ]
+    },
+    {
+      "id": "ENT-APP-006", "domain": "Entra ID", "name": "Application client secret lifetime is not limited to 180 days", "severity": "Medium",
+      "scf": "IAC-15", "nistCsf": "PR.AA-01", "cis": ["5.1.5.4"], "license": "EntraP1",
+      "remediation": [
+        "Microsoft Entra admin center > Entra ID > Enterprise apps > Security > Application policies (or PATCH /policies/defaultAppManagementPolicy). Turn on 'Restrict max password lifetime' and set 180 days or less.",
+        "Restrictions apply to applications and to service principals separately; set both. Leave 'only apply to apps created after' empty so existing apps are covered, and plan to rotate credentials that break the new limits.",
+        "Inventory existing secrets that exceed the limit (see ENT-APP-001 and ENT-APP-002) and rotate them."
+      ]
+    },
+    {
+      "id": "ENT-APP-007", "domain": "Entra ID", "name": "New application secrets can be custom rather than system-generated", "severity": "Medium",
+      "scf": "IAC-15", "nistCsf": "PR.AA-01", "cis": ["5.1.5.5"], "license": "EntraP1",
+      "remediation": [
+        "Microsoft Entra admin center > Entra ID > Enterprise apps > Security > Application policies (or PATCH /policies/defaultAppManagementPolicy). Turn on 'Block custom passwords'.",
+        "Restrictions apply to applications and to service principals separately; set both. Leave 'only apply to apps created after' empty so existing apps are covered, and plan to rotate credentials that break the new limits.",
+        "System-generated secrets are long and random; custom ones are often weak or reused."
+      ]
+    },
+    {
+      "id": "ENT-APP-008", "domain": "Entra ID", "name": "Application certificate lifetime is not limited to 180 days", "severity": "Medium",
+      "scf": "IAC-15", "nistCsf": "PR.AA-01", "cis": ["5.1.5.6"], "license": "EntraP1",
+      "remediation": [
+        "Microsoft Entra admin center > Entra ID > Enterprise apps > Security > Application policies (or PATCH /policies/defaultAppManagementPolicy). Turn on 'Restrict max certificate lifetime' and set 180 days or less.",
+        "Restrictions apply to applications and to service principals separately; set both. Leave 'only apply to apps created after' empty so existing apps are covered, and plan to rotate credentials that break the new limits.",
+        "Inventory existing certificates that exceed the limit and rotate them."
+      ]
+    },
+    {
       "id": "ENT-AUTH-001", "domain": "Entra ID", "name": "Weak authentication methods (SMS / voice) enabled", "severity": "Medium",
       "scf": "IAC-06", "nistCsf": "PR.AA-03", "cis": ["5.2.3.5"], "license": "EntraP1",
       "remediation": [
@@ -291,6 +327,30 @@
         "Microsoft 365 admin center > Settings > Org settings > Security & privacy > Password expiration policy.",
         "Select 'Set passwords to never expire' and rely on MFA, banned passwords and risk-based sign-in controls (NIST SP 800-63B guidance).",
         "Force a reset only on evidence of compromise."
+      ]
+    },
+    {
+      "id": "ENT-AUTH-008", "domain": "Entra ID", "name": "System-preferred multifactor authentication is not enabled for all users", "severity": "Low",
+      "scf": "IAC-06", "nistCsf": "PR.AA-03", "cis": ["5.2.3.6"],
+      "remediation": [
+        "Microsoft Entra admin center > Entra ID > Authentication methods > Settings > System-preferred multifactor authentication: set State to Enabled and target All users.",
+        "The Microsoft-managed default is not enough for this recommendation; set it explicitly. Document any exclusions and review them yearly."
+      ]
+    },
+    {
+      "id": "ENT-AUTH-009", "domain": "Entra ID", "name": "Email one-time passcode authentication is enabled", "severity": "Low",
+      "scf": "IAC-06", "nistCsf": "PR.AA-03", "cis": ["5.2.3.7"],
+      "remediation": [
+        "Microsoft Entra admin center > Entra ID > Authentication methods > Policies > Email OTP: set to disabled.",
+        "Email OTP is a weaker method that depends on the security of a mailbox. Guests that rely on it for B2B sign-in need another method first."
+      ]
+    },
+    {
+      "id": "ENT-AUTH-010", "domain": "Entra ID", "name": "Microsoft Authenticator is allowed on companion applications", "severity": "Low",
+      "scf": "IAC-06", "nistCsf": "PR.AA-03", "cis": ["5.2.3.10"],
+      "remediation": [
+        "Microsoft Entra admin center > Entra ID > Authentication methods > Policies > Microsoft Authenticator > Configure: set 'Microsoft Authenticator on companion applications' to Disabled.",
+        "Authenticator Lite lets MFA run inside apps such as Outlook; the full Authenticator app keeps stronger protections."
       ]
     },
     {
@@ -465,6 +525,46 @@
       ]
     },
     {
+      "id": "ENT-DEV-001", "domain": "Entra ID", "name": "Any user can join devices to Microsoft Entra", "severity": "Medium",
+      "scf": "AST-02", "nistCsf": "PR.AA-05", "cis": ["5.1.4.1"], "license": "EntraP1",
+      "remediation": [
+        "Microsoft Entra admin center > Entra ID > Devices > Device settings. Users may join devices to Microsoft Entra: set to Selected (a named group) or None.",
+        "Use Intune Autopilot or a provisioning account for enrolment so joining does not depend on every user being allowed."
+      ]
+    },
+    {
+      "id": "ENT-DEV-002", "domain": "Entra ID", "name": "Users can register more than 10 devices", "severity": "Low",
+      "scf": "AST-02", "nistCsf": "PR.AA-05", "cis": ["5.1.4.2"], "license": "EntraP1",
+      "remediation": [
+        "Microsoft Entra admin center > Entra ID > Devices > Device settings. Maximum number of devices per user: set to 10 or fewer.",
+        "Check that shared or kiosk scenarios are covered by a different mechanism before lowering the limit."
+      ]
+    },
+    {
+      "id": "ENT-DEV-003", "domain": "Entra ID", "name": "Global Administrators are added as local administrators on joined devices", "severity": "Medium",
+      "scf": "IAC-21", "nistCsf": "PR.AA-05", "cis": ["5.1.4.3"], "license": "EntraP1",
+      "remediation": [
+        "Microsoft Entra admin center > Entra ID > Devices > Device settings. Manage Additional local administrators on all Microsoft Entra joined devices: turn off 'Global Administrators are added as local administrators'.",
+        "Use a dedicated Device Administrators group or LAPS for support access instead."
+      ]
+    },
+    {
+      "id": "ENT-DEV-004", "domain": "Entra ID", "name": "Every user who joins a device becomes its local administrator", "severity": "High",
+      "scf": "IAC-21", "nistCsf": "PR.AA-05", "cis": ["5.1.4.4"], "license": "EntraP1",
+      "remediation": [
+        "Microsoft Entra admin center > Entra ID > Devices > Device settings. Registering user is added as local administrator on the device during Microsoft Entra join: set to Selected or None.",
+        "Combine with LAPS (ENT-DEV-005) so support staff get a managed local administrator account."
+      ]
+    },
+    {
+      "id": "ENT-DEV-005", "domain": "Entra ID", "name": "Local Administrator Password Solution (LAPS) is not enabled", "severity": "Medium",
+      "scf": "IAC-10", "nistCsf": "PR.AA-01", "cis": ["5.1.4.5"], "license": "EntraP1",
+      "remediation": [
+        "Microsoft Entra admin center > Entra ID > Devices > Device settings. Enable Microsoft Entra Local Administrator Password Solution (LAPS) = Yes.",
+        "Then create an Intune policy that manages the local administrator account and password rotation on each device."
+      ]
+    },
+    {
       "id": "ENT-EXT-001", "domain": "Entra ID", "name": "Cross-tenant access uses permissive defaults with no partner restrictions", "severity": "Low",
       "scf": "IAC-20", "nistCsf": "PR.AA-05",
       "remediation": [
@@ -537,11 +637,19 @@
     },
     {
       "id": "ENT-PIM-001", "domain": "Entra ID", "name": "Global Administrator activation settings are weak", "severity": "High",
-      "scf": "IAC-16", "nistCsf": "PR.AA-05", "cis": ["5.3.4"], "license": "EntraP2",
+      "scf": "IAC-16", "nistCsf": "PR.AA-05", "cisPartial": ["5.3.4"], "license": "EntraP2",
       "remediation": [
         "Entra admin center > Identity governance > Privileged Identity Management > Microsoft Entra roles > Settings > Global Administrator > Edit.",
         "Activation: set a maximum duration of 8 hours or less, require MFA (or authentication context) and justification.",
         "Require approval from a second administrator where staffing allows; enable activation notifications."
+      ]
+    },
+    {
+      "id": "ENT-PIM-002", "domain": "Entra ID", "name": "Privileged Role Administrator activation does not require approval", "severity": "Medium",
+      "scf": "IAC-16", "nistCsf": "PR.AA-05", "cis": ["5.3.5"], "license": "EntraP2",
+      "remediation": [
+        "Entra admin center > Identity governance > Privileged Identity Management > Microsoft Entra roles > Settings > Privileged Role Administrator > Edit > Activation: Require approval to activate, and select the approvers.",
+        "Name at least two approvers (or a group) so that approval does not depend on one person; keep MFA and justification on activation."
       ]
     },
     {
@@ -606,6 +714,22 @@
         "Entra admin center > Protection > Password reset > Properties: set 'Self service password reset enabled' to All (or a pilot group first).",
         "Authentication methods: require 2 methods to reset and register users via the combined security information experience.",
         "Note: this check reads the tenant-level flag only; confirm the All/Selected scope in the portal."
+      ]
+    },
+    {
+      "id": "ENT-POL-008", "domain": "Entra ID", "name": "Users can create security groups", "severity": "Medium",
+      "scf": "IAC-16", "nistCsf": "PR.AA-05", "cis": ["5.1.3.1"],
+      "remediation": [
+        "Microsoft Entra admin center > Entra ID > Groups > General > Self Service Group Management: 'Users can create security groups in Azure portals, API or PowerShell' = No.",
+        "Give group creation to a delegated group or role (for example Groups Administrator) so ownership and naming stay controlled."
+      ]
+    },
+    {
+      "id": "ENT-POL-009", "domain": "Entra ID", "name": "Users can read BitLocker recovery keys of their own devices", "severity": "Medium",
+      "scf": "CRY-09", "nistCsf": "PR.DS-01", "cis": ["5.1.4.6"],
+      "remediation": [
+        "Microsoft Entra admin center > Entra ID > Devices > Device settings. Restrict users from recovering the BitLocker key(s) for their owned devices = Yes.",
+        "Provide recovery through the help desk (Intune or the device's Recovery keys blade) so recovery is verified and logged."
       ]
     },
     {

@@ -160,6 +160,7 @@ function Get-EntraPolicyGaps {
 
     # --- Conditional Access controls from CIS 5.2.2.x (own file) -------------------------------------
     Get-ConditionalAccessGaps
+    Get-EntraTenantPolicyGaps
 
     # --- PIM role settings for Global Administrator -------------------------------------------------
     Write-Progress -Id 2 -ParentId 1 -Activity 'Entra policy' -Status 'PIM role settings' -PercentComplete 55
