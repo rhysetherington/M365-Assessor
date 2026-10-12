@@ -38,6 +38,7 @@ function Invoke-M365SecurityReview {
         [switch]$IncludeEvidence,
         [switch]$CisView,
         [switch]$SkipRoleCheck,
+        [switch]$AllowGlobalAdministrator,
         [switch]$NoExport
     )
 
@@ -52,7 +53,7 @@ function Invoke-M365SecurityReview {
         Write-Progress -Id 1 -Activity "M365 Gap Assessment [$label]" -Status 'Connecting' -PercentComplete $base
 
         # --- Connect -------------------------------------------------------------------------
-        $connect = @{ SkipRoleCheck = $SkipRoleCheck; Environment = $Environment }
+        $connect = @{ SkipRoleCheck = $SkipRoleCheck; Environment = $Environment; AllowGlobalAdministrator = [bool]$AllowGlobalAdministrator }
         if ($tenant) { $connect.TenantId = $tenant }
         if ($Credential) { $connect.Credential = $Credential }
         if ($CertificateThumbprint) { $connect.CertificateThumbprint = $CertificateThumbprint; $connect.ClientId = $ClientId }

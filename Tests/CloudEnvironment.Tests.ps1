@@ -21,6 +21,8 @@ BeforeAll {
         $script:Calls = @()
         $script:Ctx = $null
         $script:CtxEnvOverride = $null
+        # Connect-M365Assessment reads the signed-in user's roles even with -SkipRoleCheck (for the Global Administrator guard).
+        function script:Get-GraphPagedResult { param([Parameter(ValueFromRemainingArguments = $true)]$R) [pscustomobject]@{ displayName = 'Global Reader' } }
         function script:Get-MgContext { $script:Ctx }
         function script:Disconnect-MgGraph { param([Parameter(ValueFromRemainingArguments = $true)]$R) $script:Calls += 'MG-DISCONNECT'; $script:Ctx = $null }
         function script:Connect-MgGraph {

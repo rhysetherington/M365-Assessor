@@ -5,6 +5,8 @@ function Connect-M365Assessment {
     .DESCRIPTION
         Interactive (default), device code, app-only client secret (-Credential: username = client ID, password = secret)
         or app-only certificate (-ClientId + -CertificateThumbprint). Switching tenants disconnects the previous session first.
+        An account that holds the Global Administrator role is not needed (Global Reader is enough), so the run asks for confirmation
+        (default No) when one is used, and stops in a session that cannot ask unless -AllowGlobalAdministrator is passed on purpose.
         -Environment selects the Microsoft cloud (Global, USGov = GCC High, USGovDoD, China). Exchange, Security & Compliance and
         Teams follow the same cloud. Only Global has been run against a live tenant; the others warn that they are untested.
     .EXAMPLE
@@ -21,6 +23,7 @@ function Connect-M365Assessment {
         [Parameter(ParameterSetName = 'Cert', Mandatory)][string]$ClientId,
         [ValidateSet('Global', 'USGov', 'USGovDoD', 'China')][string]$Environment = 'Global',
         [switch]$SkipRoleCheck,
+        [switch]$AllowGlobalAdministrator,
         [switch]$Force
     )
 
@@ -40,6 +43,7 @@ function Connect-M365Assessment {
     }
 
     if (-not $ctx) {
+        $script:GlobalAdminAcknowledged = $null   # a new sign-in has to be confirmed again
         $connect = @{ NoWelcome = $true; ContextScope = 'Process'; Environment = $Environment; ErrorAction = 'Stop' }
         # 'organizations' restricts sign-in to work/school accounts; the default 'common' authority also admits
         # personal Microsoft accounts, which cannot consent to these directory scopes (AADSTS70011).
@@ -69,18 +73,22 @@ function Connect-M365Assessment {
     }
 
     $roles = @()
-    if ($ctx.AuthType -eq 'Delegated' -and -not $SkipRoleCheck) {
-        try {
-            $roles = @(Get-GraphPagedResult -Uri '/v1.0/me/memberOf/microsoft.graph.directoryRole?$select=displayName' | ForEach-Object { $_.displayName })
+    if ($ctx.AuthType -eq 'Delegated') {
+        # The roles are read even with -SkipRoleCheck: that switch waives the read-role requirement, not the Global Administrator
+        # confirmation, so a script cannot sidestep the guard by skipping the check.
+        try { $roles = @(Get-SignedInDirectoryRoles) }
+        catch {
+            if (-not $SkipRoleCheck) { throw "Could not read the signed-in user's directory roles: $($_.Exception.Message)" }
+            Write-Warning "Could not read the signed-in user's directory roles, so it was not possible to check whether this account is a Global Administrator: $($_.Exception.Message)"
         }
-        catch { throw "Could not read the signed-in user's directory roles: $($_.Exception.Message)" }
 
-        if (-not ($roles | Where-Object { $_ -in $acceptedRoles })) {
+        if (-not $SkipRoleCheck -and -not ($roles | Where-Object { $_ -in $acceptedRoles })) {
             Disconnect-MgGraph | Out-Null
             throw "Signed-in account holds no read-capable role (needs one of: $($acceptedRoles -join ', ')). Roles found: $(if ($roles) { $roles -join ', ' } else { 'none' }). If the role is PIM-eligible, activate it first. Use -SkipRoleCheck to bypass."
         }
-        if ('Global Administrator' -in $roles -and 'Global Reader' -notin $roles) {
-            Write-Warning 'Signed in as Global Administrator. This tool is read-only; Global Reader is the recommended least-privilege role.'
+        # Any account that holds Global Administrator is covered, including one that also holds Global Reader.
+        if ('Global Administrator' -in $roles) {
+            Confirm-GlobalAdministratorUse -Account $ctx.Account -TenantId $ctx.TenantId -Allow:$AllowGlobalAdministrator
         }
     }
     elseif ($ctx.AuthType -ne 'Delegated') {

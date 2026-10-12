@@ -77,6 +77,29 @@ Until then a Global Reader sees "Need admin approval". After consent, the Global
 Security Administrator); a PIM-eligible role must be activated first. Sign-in uses the `organizations` authority, so
 personal Microsoft accounts are rejected. For app-only use, grant the equivalent **application** permissions to your app registration.
 
+### Global Administrator confirmation
+
+Global Reader is enough for every check, and a Global Administrator token is a far more valuable thing to expose, so the tool does not
+let that account be used by accident or by a script nobody chose to run that way:
+
+- **Interactive session:** if the signed-in account holds Global Administrator (including an account that also holds Global Reader), the
+  tool warns and asks `Continue as Global Administrator? [y/N]`. Enter, `n` or anything other than `y` / `yes` stops the run, disconnects,
+  and assesses nothing.
+- **Session that cannot ask** (`pwsh -NonInteractive`, redirected or piped input, a scheduled job): the run stops with an error before
+  anything is assessed, and never waits for an answer. This is what halts an automated run that was coded to use a Global Administrator.
+- **On purpose:** pass `-AllowGlobalAdministrator` (on `Invoke-M365SecurityReview` or `Connect-M365Assessment`) to run as Global Administrator
+  without being asked. A warning is still printed so it is visible in logs.
+
+What it does not cover, so you are not surprised:
+
+- It applies to delegated (user) sign-ins. App-only sessions (certificate or client secret) have no directory role to check; give the app
+  registration only the read-only application permissions.
+- `-SkipRoleCheck` still waives the requirement to hold a read role, but it does **not** skip this confirmation. If the roles cannot be read at
+  all, the tool warns that it could not check.
+- Only roles the account holds now are seen. A Global Administrator role that is eligible in PIM but not activated is not detected.
+- A confirmation is remembered for the same account and tenant while one sign-in is reused, a fresh sign-in asks again, and a refusal is
+  never remembered.
+
 ## Coverage
 
 For the full list of checks by administration console, and what is **not** covered yet, see [`Docs/Coverage.md`](../Docs/Coverage.md).
