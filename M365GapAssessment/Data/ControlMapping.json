@@ -1191,6 +1191,14 @@
         "Teams admin center > Meetings > Meeting policies > Global > Recording & transcription.",
         "Turn off 'Meeting recording' in the Global policy and enable it only in a policy assigned to organisers who need it."
       ]
+    },
+    {
+      "id": "TMS-012", "domain": "Microsoft Teams", "name": "People from untrusted organizations can chat in Teams meetings", "severity": "Medium",
+      "scf": "NET-04", "nistCsf": "PR.IR-01", "cis": ["8.5.8"],
+      "remediation": [
+        "Teams admin center > Meetings > Meeting policies > Global (Org-wide default) > Meeting engagement: set External meeting chat to Off (Set-CsTeamsMeetingPolicy -Identity Global -AllowExternalNonTrustedMeetingChat $false).",
+        "External participants can still join and speak; this stops people from organizations you have not trusted from posting in the meeting chat, which is a route for phishing links and spam."
+      ]
     }
   ]
 }

@@ -144,9 +144,9 @@ Describe 'Teams follows the cloud' {
         $null = InModuleScope M365GapAssessment { $script:CloudEnvironmentName = 'USGovDoD'; Get-TeamsGaps }
         (Get-Calls | Where-Object { $_ -like 'TEAMS *' }) | Should -BeLike '*-TeamsEnvironmentName: TeamsDOD*'
     }
-    It 'China: reports all 11 Teams checks NotAssessed with the reason and never connects' {
+    It 'China: reports all 12 Teams checks NotAssessed with the reason and never connects' {
         $r = InModuleScope M365GapAssessment { $script:CloudEnvironmentName = 'China'; Get-TeamsGaps 3>$null }
-        @($r).Count | Should -Be 11
+        @($r).Count | Should -Be 12
         ($r | Where-Object Status -ne 'NotAssessed') | Should -BeNullOrEmpty
         $r[0].Detail | Should -BeLike '*not available for the Microsoft 365 operated by 21Vianet*'
         Get-Calls | Where-Object { $_ -like 'TEAMS *' } | Should -BeNullOrEmpty
