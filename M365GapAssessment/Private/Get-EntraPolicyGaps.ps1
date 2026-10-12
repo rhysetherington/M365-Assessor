@@ -158,6 +158,9 @@ function Get-EntraPolicyGaps {
             -Detail "$($locations.Count) named location(s); $($usesLocation.Count) enabled policy(ies) use location conditions."
     }
 
+    # --- Conditional Access controls from CIS 5.2.2.x (own file) -------------------------------------
+    Get-ConditionalAccessGaps
+
     # --- PIM role settings for Global Administrator -------------------------------------------------
     Write-Progress -Id 2 -ParentId 1 -Activity 'Entra policy' -Status 'PIM role settings' -PercentComplete 55
     Invoke-Collector -Name 'PIM role settings' -FindingIds 'ENT-PIM-001' -Script {

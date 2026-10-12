@@ -3,7 +3,7 @@
 Companion to `M365SAT-comparison.md`. All new checks are **written fresh** from CIS and Microsoft documentation (see licence position in the comparison).
 Each item keeps the module's rules: read-only, `Invoke-Collector` + `New-Finding`, one `ControlMapping.json` entry per finding.
 
-**Status as of 2026-10-12.** The module now has 98 findings (the review started from 70) and a 949-test offline Pester suite that runs in GitHub Actions. Of the 8 numbered plan
+**Status as of 2026-10-12.** The module now has 107 findings (the review started from 70) and a 1,057-test offline Pester suite that runs in GitHub Actions. Of the 8 numbered plan
 items, 6 are done (1 to 6), 1 is partly done (7: wired, not live-tested) and 1 is not
 started (8). Three unplanned areas were also built. What remains is listed in section 2.
 
@@ -18,7 +18,7 @@ Effort: S = under half a day, M = 1-2 days, L = several days.
 | 3 | Evidence files | **Done**, live-verified | `-IncludeEvidence`; formula injection tested offline only (no live item started with `=+-@`). |
 | 4 | CIS view | **Done**, live-verified | `-CisView`. **No L1/L2 level**: the mapping has no level data. |
 | 5 | CIS coverage generator | **Done**, run on the v7.0.0 benchmark | `Docs/Get-CisCoverage.ps1` against the 158 recommendations in CIS Microsoft 365 Foundations v7.0.0: **70 Covered, 2 Partial, 86 Missing**. The run found 17 existing findings that matched a recommendation but had no CIS number; they are now tagged (61 of 98 findings carry `cis`). See "CIS coverage against v7.0.0". The benchmark list and the report stay local and git-ignored. |
-| 6 | Pester suite, CI and analyzer | **Done** | 949 offline tests, each feature checked by breaking it in a copy. GitHub Actions runs Pester on Linux, macOS and Windows plus PSScriptAnalyzer (`.github/workflows/ci.yml`; rule exclusions and reasons in `PSScriptAnalyzerSettings.psd1`). |
+| 6 | Pester suite, CI and analyzer | **Done** | 1,057 offline tests, each feature checked by breaking it in a copy. GitHub Actions runs Pester on Linux, macOS and Windows plus PSScriptAnalyzer (`.github/workflows/ci.yml`; rule exclusions and reasons in `PSScriptAnalyzerSettings.psd1`). |
 | 7 | Sovereign cloud validation | **Wired, not live-tested** | One cloud table drives all services; only `Global` is live-tested. Germany rejected. |
 | 8 | Azure subscription domain | **Not started** | Still needs the dependency decision (see below). |
 | + | Defender for Office 365 depth | **Done**, live-verified | New: `DFO-001..014`. Not in the original plan. |
@@ -32,7 +32,7 @@ The comparison counted 10 covered, 2 partial and 12 missing of 24. Re-reading th
 - **Partial: 2.** `CISMAz5111` (we require baseline protection rather than "Security Defaults disabled", the opposite polarity) and `CISMAz5131` (dynamic guest group, related to `ENT-GRP-002` with opposite polarity).
 - **Still missing: 2.** `CISMAz5124` (Entra admin centre access restricted; confirm a Graph source exists) and `CISAz65` (SSPR methods required).
 
-This is an estimate by title, not a CIS benchmark score: M365SAT ships only about 24 inspectors, and our own CIS references number 61 of 98 findings.
+This is an estimate by title, not a CIS benchmark score: M365SAT ships only about 24 inspectors, and our own CIS references number 70 of 107 findings.
 
 ## 2. What is left
 
@@ -89,7 +89,7 @@ Audit log search enabled, OneDrive sync restrictions and Outlook on the web stor
 
 Worth building, cheapest first (all read-only, Global Reader should suffice):
 
-1. **Conditional Access policy checks, no new API (about 8):** `5.2.2.2` MFA for all users, `5.2.2.4` sign-in frequency for admins, `5.2.2.5` phishing-resistant MFA for admins, `5.2.2.10` managed device to register security info, `5.2.2.12` device code flow blocked, `5.2.2.17` authentication transfer blocked, and `5.2.2.13`, `5.2.2.15`, `5.2.2.16` if the policy fields allow. The policies are already cached.
+1. **Conditional Access policy checks: built, not yet live-tested.** `ENT-CA-010` to `ENT-CA-018` cover `5.2.2.2`, `5.2.2.4`, `5.2.2.5`, `5.2.2.10`, `5.2.2.12`, `5.2.2.13`, `5.2.2.15`, `5.2.2.16` and `5.2.2.17` (new file `Private/Get-ConditionalAccessGaps.ps1`, 54 offline tests). Admin roles are looked up by name from the tenant's role templates at run time, and phishing-resistant is judged from the strength's allowed methods. Coverage after this group: **79 Covered, 2 Partial, 77 Missing** of 158. Still to confirm live: that Global Reader gets `allowedCombinations` on the authentication strength and the role template names.
 2. **SharePoint tenant settings, same call as today (about 8):** `7.2.2`, `7.2.4`, `7.2.7`, `7.2.9`, `7.2.10`, `7.2.11`, `7.3.1`, and `7.2.8` if it is readable.
 3. **Entra tenant policies (about 10):** `5.1.3.1` security group creation, `5.1.4.1` to `5.1.4.4` device join and local admin, `5.1.4.6` BitLocker key recovery, `5.1.5.3` to `5.1.5.6` application password and certificate lifetimes, `5.2.3.6` / `5.2.3.7` / `5.2.3.10` from the authentication methods policy, `5.3.5` PIM approval for Privileged Role Administrator.
 4. **Identity hygiene (3):** `1.1.1` admin accounts cloud-only, `1.1.4` admin licences with a reduced footprint, `5.2.4.2` to `5.2.4.5` SSPR details if the policy is readable.
@@ -116,6 +116,6 @@ Opt-in `Azure` domain with read-only checks (Defender for Cloud plans, storage p
 - Credentials as command-line parameters (keep certificate, device code and interactive).
 
 ## 6. Suggested order from here
-1. Build the CIS Missing groups in the order above (Conditional Access first).
+1. Live-check `ENT-CA-010` to `ENT-CA-018`, then build the remaining CIS Missing groups in the order above (SharePoint settings next).
 2. Report layout fix for narrow screens.
 3. Live tests in a sovereign cloud when a tenant is available, then the Azure domain once the dependency decision is made.

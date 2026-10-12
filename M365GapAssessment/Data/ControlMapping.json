@@ -384,6 +384,87 @@
       ]
     },
     {
+      "id": "ENT-CA-010", "domain": "Entra ID", "name": "No Conditional Access policy requires MFA for all users on all resources", "severity": "High",
+      "scf": "IAC-06", "nistCsf": "PR.AA-03", "cis": ["5.2.2.2"], "license": "EntraP1",
+      "remediation": [
+        "Microsoft Entra admin center > Protection > Conditional Access > New policy: Users = All users; Target resources = All resources; Grant = Require multifactor authentication (or an authentication strength).",
+        "Exclude only documented break-glass accounts, start in report-only mode for at least a week, review the sign-in logs, then set the policy to On.",
+        "Security Defaults does not satisfy this recommendation: it applies MFA, but the benchmark expects a Conditional Access policy. Disable Security Defaults before turning the policy on."
+      ]
+    },
+    {
+      "id": "ENT-CA-011", "domain": "Entra ID", "name": "Administrators are not forced to reauthenticate often or to avoid persistent sessions", "severity": "Medium",
+      "scf": "IAC-25", "nistCsf": "PR.AA-03", "cis": ["5.2.2.4"], "license": "EntraP1",
+      "remediation": [
+        "Conditional Access > New policy: Users = Directory roles (at least the administrator roles in the benchmark, including Global Administrator); Target resources = All resources.",
+        "Session > Sign-in frequency = Periodic reauthentication of 4 hours or less (or Every time); Persistent browser session = Never persistent.",
+        "Exclude only documented break-glass accounts, start in report-only mode for at least a week, review the sign-in logs, then set the policy to On."
+      ]
+    },
+    {
+      "id": "ENT-CA-012", "domain": "Entra ID", "name": "No phishing-resistant MFA required for administrators", "severity": "High",
+      "scf": "IAC-06.1", "nistCsf": "PR.AA-03", "cis": ["5.2.2.5"], "license": "EntraP1",
+      "remediation": [
+        "Register administrators with FIDO2 keys, Windows Hello for Business or certificate-based authentication first, or they will be locked out.",
+        "Conditional Access > New policy: Users = Directory roles (at least the administrator roles in the benchmark); Target resources = All resources; Grant = Require authentication strength = Phishing-resistant MFA.",
+        "Exclude only documented break-glass accounts, start in report-only mode for at least a week, review the sign-in logs, then set the policy to On."
+      ]
+    },
+    {
+      "id": "ENT-CA-013", "domain": "Entra ID", "name": "Security information can be registered without a managed device", "severity": "Medium",
+      "scf": "IAC-04", "nistCsf": "PR.AA-03", "cis": ["5.2.2.10"], "license": "EntraP1",
+      "remediation": [
+        "Conditional Access > New policy: Users = All users; Target = User actions > Register security information; Grant = Require device to be marked as compliant (optionally also Entra hybrid joined, using Require one of the selected controls).",
+        "Do not require any other control on this policy. Exclude break-glass accounts and confirm devices are enrolled and compliant before enforcing, or new users cannot register.",
+        "Start in report-only mode, review the sign-in logs, then set the policy to On."
+      ]
+    },
+    {
+      "id": "ENT-CA-014", "domain": "Entra ID", "name": "Device code sign-in flow is not blocked", "severity": "High",
+      "scf": "IAC-02", "nistCsf": "PR.AA-03", "cis": ["5.2.2.12"], "license": "EntraP1",
+      "remediation": [
+        "Conditional Access > New policy: Users = All users; Target resources = All resources; Conditions > Authentication flows > Device code flow; Grant = Block access.",
+        "Device code phishing is a common way to steal tokens. If a legitimate device (for example a meeting-room device) needs the flow, exclude that account or device explicitly and document it.",
+        "Exclude only documented break-glass accounts, start in report-only mode for at least a week, review the sign-in logs, then set the policy to On."
+      ]
+    },
+    {
+      "id": "ENT-CA-015", "domain": "Entra ID", "name": "Periodic reauthentication of 7 days or less is not required for all users", "severity": "Medium",
+      "scf": "IAC-25", "nistCsf": "PR.AA-03", "cis": ["5.2.2.13"], "license": "EntraP1",
+      "remediation": [
+        "Conditional Access > New policy: Users = All users; Target resources = All resources; Session > Sign-in frequency = Periodic reauthentication of 7 days or less.",
+        "Policies that use sign-in risk or user risk conditions are not counted: create this as a separate policy without risk conditions.",
+        "Exclude only documented break-glass accounts, start in report-only mode for at least a week, review the sign-in logs, then set the policy to On."
+      ]
+    },
+    {
+      "id": "ENT-CA-016", "domain": "Entra ID", "name": "No Conditional Access policy blocks sign-ins from untrusted locations", "severity": "Medium",
+      "scf": "NET-04", "nistCsf": "PR.IR-01", "cis": ["5.2.2.15"], "license": "EntraP1",
+      "remediation": [
+        "Conditional Access > Named locations: define the countries or IP ranges you operate in and mark IP ranges you control as trusted.",
+        "Conditional Access > New policy: Users = All users; Target resources = All resources; Network = Include any network or location, Exclude your trusted locations; Grant = Block access.",
+        "Exclude only documented break-glass accounts, start in report-only mode for at least a week, review the sign-in logs, then set the policy to On."
+      ]
+    },
+    {
+      "id": "ENT-CA-017", "domain": "Entra ID", "name": "Token protection is not enforced for sign-in sessions", "severity": "Low",
+      "scf": "IAC-02", "nistCsf": "PR.AA-03", "cis": ["5.2.2.16"], "license": "EntraP1",
+      "remediation": [
+        "Conditional Access > New policy: Target resources = Office 365 Exchange Online, Office 365 SharePoint Online and Microsoft Teams Services; Conditions > Device platforms = Windows; Client apps = Mobile apps and desktop clients only.",
+        "Session > Require token protection for sign-in sessions. Check that your Windows clients support it first: unsupported clients are blocked.",
+        "Start in report-only mode, review the sign-in logs, then set the policy to On."
+      ]
+    },
+    {
+      "id": "ENT-CA-018", "domain": "Entra ID", "name": "Authentication transfer is not blocked", "severity": "Medium",
+      "scf": "IAC-02", "nistCsf": "PR.AA-03", "cis": ["5.2.2.17"], "license": "EntraP1",
+      "remediation": [
+        "Conditional Access > New policy: Users = All users; Target resources = All resources; Conditions > Authentication flows > Authentication transfer; Grant = Block access.",
+        "Authentication transfer lets a session on one device be handed to another (for example by QR code). Exclude only documented scenarios that need it.",
+        "Exclude only documented break-glass accounts, start in report-only mode for at least a week, review the sign-in logs, then set the policy to On."
+      ]
+    },
+    {
       "id": "ENT-EXT-001", "domain": "Entra ID", "name": "Cross-tenant access uses permissive defaults with no partner restrictions", "severity": "Low",
       "scf": "IAC-20", "nistCsf": "PR.AA-05",
       "remediation": [
