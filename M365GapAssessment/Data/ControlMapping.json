@@ -42,7 +42,7 @@
     },
     {
       "id": "DFO-001", "domain": "Defender for Office 365", "name": "No enabled Safe Attachments policy blocking malicious attachments", "severity": "High",
-      "scf": "END-04", "nistCsf": "DE.CM-09", "license": "DefenderO365",
+      "scf": "END-04", "nistCsf": "DE.CM-09", "cis": ["2.1.4"], "license": "DefenderO365",
       "remediation": [
         "Defender portal (security.microsoft.com) > Email & collaboration > Policies & rules > Threat policies > Safe Attachments.",
         "Create a policy for all users with action Block (or Dynamic Delivery) and make sure it is assigned; keep the built-in protection policy.",
@@ -51,7 +51,7 @@
     },
     {
       "id": "DFO-002", "domain": "Defender for Office 365", "name": "Safe Attachments off for SharePoint, OneDrive and Teams, or Safe Documents click-through allowed", "severity": "Medium",
-      "scf": "END-04", "nistCsf": "DE.CM-09", "license": "DefenderO365",
+      "scf": "END-04", "nistCsf": "DE.CM-09", "cis": ["2.1.5"], "license": "DefenderO365",
       "remediation": [
         "Defender portal > Email & collaboration > Policies & rules > Threat policies > Safe Attachments > Global settings.",
         "Turn on 'Turn on Defender for Office 365 for SharePoint, OneDrive, and Microsoft Teams'.",
@@ -69,7 +69,7 @@
     },
     {
       "id": "DFO-004", "domain": "Defender for Office 365", "name": "Anti-malware policy without common attachment types filter or zero-hour auto purge", "severity": "Medium",
-      "scf": "END-04", "nistCsf": "DE.CM-09",
+      "scf": "END-04", "nistCsf": "DE.CM-09", "cis": ["2.1.2"],
       "remediation": [
         "Defender portal > Email & collaboration > Policies & rules > Threat policies > Anti-malware > open each policy.",
         "Turn on the common attachments filter and select the file types to block (for example executables and script files).",
@@ -78,7 +78,7 @@
     },
     {
       "id": "DFO-005", "domain": "Defender for Office 365", "name": "Anti-spam allowed sender or domain lists configured", "severity": "Medium",
-      "scf": "NET-12", "nistCsf": "DE.CM-09",
+      "scf": "NET-12", "nistCsf": "DE.CM-09", "cis": ["2.1.14"],
       "remediation": [
         "Defender portal > Email & collaboration > Policies & rules > Threat policies > Anti-spam > open each policy > Allowed and blocked senders and domains.",
         "Remove allowed senders and domains; use the Tenant Allow/Block List with an expiry for genuine false positives instead.",
@@ -96,7 +96,7 @@
     },
     {
       "id": "DFO-007", "domain": "Defender for Office 365", "name": "Outbound spam: administrators not notified when a user is blocked", "severity": "Low",
-      "scf": "MON-01", "nistCsf": "DE.CM-01",
+      "scf": "MON-01", "nistCsf": "DE.CM-01", "cis": ["2.1.6"],
       "remediation": [
         "Defender portal > Email & collaboration > Policies & rules > Threat policies > Anti-spam > Outbound policy.",
         "Turn on 'Notify these users and groups if a sender is blocked due to sending outbound spam' and add a monitored mailbox or group.",
@@ -114,7 +114,7 @@
     },
     {
       "id": "DFO-009", "domain": "Defender for Office 365", "name": "Mail flow rules bypass spam filtering (SCL -1)", "severity": "High",
-      "scf": "NET-12", "nistCsf": "DE.CM-09",
+      "scf": "NET-12", "nistCsf": "DE.CM-09", "cis": ["6.2.2"],
       "remediation": [
         "Exchange admin center > Mail flow > Rules; open each listed rule.",
         "Remove the action 'Set the spam confidence level (SCL) to Bypass spam filtering' or restrict it to a narrow, verified source.",
@@ -132,7 +132,7 @@
     },
     {
       "id": "DFO-011", "domain": "Defender for Office 365", "name": "Connection filter IP allow list or safe list in use", "severity": "Medium",
-      "scf": "NET-12", "nistCsf": "DE.CM-09",
+      "scf": "NET-12", "nistCsf": "DE.CM-09", "cis": ["2.1.12", "2.1.13"],
       "remediation": [
         "Defender portal > Email & collaboration > Policies & rules > Threat policies > Anti-spam > Connection filter policy.",
         "Remove IP addresses from the allow list and turn off the safe list.",
@@ -141,7 +141,7 @@
     },
     {
       "id": "DFO-012", "domain": "Defender for Office 365", "name": "External sender identification (tag) disabled in Outlook", "severity": "Low",
-      "scf": "NET-12", "nistCsf": "DE.CM-09",
+      "scf": "NET-12", "nistCsf": "DE.CM-09", "cis": ["6.2.3"],
       "remediation": [
         "Connect to Exchange Online PowerShell and run Set-ExternalInOutlook -Enabled $true.",
         "Confirm the tag appears on external mail in Outlook clients, and inform users what it means."
@@ -149,7 +149,7 @@
     },
     {
       "id": "DFO-013", "domain": "Defender for Office 365", "name": "Zero-hour auto purge disabled for Microsoft Teams", "severity": "Low",
-      "scf": "END-04", "nistCsf": "DE.CM-09", "license": "DefenderO365",
+      "scf": "END-04", "nistCsf": "DE.CM-09", "cis": ["2.4.4"], "license": "DefenderO365",
       "remediation": [
         "Defender portal > Settings > Email & collaboration > Microsoft Teams protection.",
         "Turn on zero-hour auto purge so Teams messages found to be malicious after delivery are removed.",
@@ -269,7 +269,7 @@
     },
     {
       "id": "ENT-AUTH-005", "domain": "Entra ID", "name": "Smart lockout threshold above 10 failed sign-ins", "severity": "Medium",
-      "scf": "IAC-22", "nistCsf": "PR.AA-03",
+      "scf": "IAC-22", "nistCsf": "PR.AA-03", "cis": ["5.2.3.8"],
       "remediation": [
         "Entra admin center > Protection > Authentication methods > Password protection.",
         "Set 'Lockout threshold' to 10 or fewer failed sign-ins (the default is 10).",
@@ -278,7 +278,7 @@
     },
     {
       "id": "ENT-AUTH-006", "domain": "Entra ID", "name": "Smart lockout duration below 60 seconds", "severity": "Low",
-      "scf": "IAC-22", "nistCsf": "PR.AA-03",
+      "scf": "IAC-22", "nistCsf": "PR.AA-03", "cis": ["5.2.3.9"],
       "remediation": [
         "Entra admin center > Protection > Authentication methods > Password protection.",
         "Set 'Lockout duration in seconds' to 60 or more (the default is 60); longer slows password-spray attempts."
@@ -286,7 +286,7 @@
     },
     {
       "id": "ENT-AUTH-007", "domain": "Entra ID", "name": "Password expiration policy enabled (not set to never expire)", "severity": "Low",
-      "scf": "IAC-10.1", "nistCsf": "PR.AA-01",
+      "scf": "IAC-10.1", "nistCsf": "PR.AA-01", "cis": ["1.3.1"],
       "remediation": [
         "Microsoft 365 admin center > Settings > Org settings > Security & privacy > Password expiration policy.",
         "Select 'Set passwords to never expire' and rely on MFA, banned passwords and risk-based sign-in controls (NIST SP 800-63B guidance).",
@@ -375,7 +375,7 @@
     },
     {
       "id": "ENT-CA-009", "domain": "Entra ID", "name": "Fewer than two emergency (break-glass) access accounts identified", "severity": "Medium",
-      "scf": "BCD-01", "nistCsf": "PR.IR-03",
+      "scf": "BCD-01", "nistCsf": "PR.IR-03", "cisPartial": ["1.1.2"],
       "remediation": [
         "Manual review: confirm which Global Administrators are meant to be break-glass accounts (the tool only nominates accounts excluded from Conditional Access).",
         "Create two cloud-only accounts (on the *.onmicrosoft.com domain or a custom domain, per your standard) with permanent Global Administrator and long random passwords stored offline.",
@@ -438,7 +438,7 @@
     },
     {
       "id": "ENT-GRP-003", "domain": "Entra ID", "name": "Public Microsoft 365 groups exist (review for approval)", "severity": "Low",
-      "scf": "DCH-13", "nistCsf": "PR.AA-05",
+      "scf": "DCH-13", "nistCsf": "PR.AA-05", "cis": ["1.2.1"],
       "remediation": [
         "Microsoft 365 admin center > Teams & groups > Active teams & groups > filter Privacy = Public.",
         "For each group confirm it is meant to be discoverable and joinable by anyone in the organisation; change others to Private.",
@@ -520,7 +520,7 @@
     },
     {
       "id": "ENT-POL-007", "domain": "Entra ID", "name": "Self-service password reset is not enabled", "severity": "Medium",
-      "scf": "IAC-10", "nistCsf": "PR.AA-01",
+      "scf": "IAC-10", "nistCsf": "PR.AA-01", "cisPartial": ["5.2.4.1"],
       "remediation": [
         "Entra admin center > Protection > Password reset > Properties: set 'Self service password reset enabled' to All (or a pilot group first).",
         "Authentication methods: require 2 methods to reset and register users via the combined security information experience.",
@@ -669,7 +669,7 @@
     },
     {
       "id": "PUR-001", "domain": "Microsoft Purview", "name": "Unified audit log ingestion is turned off", "severity": "High",
-      "scf": "MON-03", "nistCsf": "PR.PS-04",
+      "scf": "MON-03", "nistCsf": "PR.PS-04", "cis": ["3.1.1"],
       "remediation": [
         "Purview portal (purview.microsoft.com) > Audit > Start recording user and admin activity.",
         "Or run Set-AdminAuditLogConfig -UnifiedAuditLogIngestionEnabled $true in Exchange Online PowerShell (changes can take up to 60 minutes).",
@@ -678,7 +678,7 @@
     },
     {
       "id": "PUR-002", "domain": "Microsoft Purview", "name": "No enabled and enforcing Data Loss Prevention policy", "severity": "High",
-      "scf": "DCH-01", "nistCsf": "PR.DS-01",
+      "scf": "DCH-01", "nistCsf": "PR.DS-01", "cis": ["3.2.1"],
       "remediation": [
         "Purview portal > Solutions > Data loss prevention > Policies > Create policy; start from a template that matches your data (for example financial or personal data).",
         "Run in test mode with notifications first, then switch the policy to 'Turn it on right away'.",
@@ -687,7 +687,7 @@
     },
     {
       "id": "PUR-003", "domain": "Microsoft Purview", "name": "DLP does not cover every workload (Exchange, SharePoint, OneDrive, Teams)", "severity": "Medium",
-      "scf": "DCH-01", "nistCsf": "PR.DS-02",
+      "scf": "DCH-01", "nistCsf": "PR.DS-02", "cis": ["3.2.2"],
       "remediation": [
         "Purview portal > Data loss prevention > Policies > edit each policy > Locations.",
         "Add Exchange email, SharePoint sites, OneDrive accounts and Teams chat and channel messages to enforcing policies.",
@@ -696,7 +696,7 @@
     },
     {
       "id": "PUR-004", "domain": "Microsoft Purview", "name": "No sensitivity labels published to users", "severity": "Medium",
-      "scf": "DCH-02", "nistCsf": "ID.AM-05",
+      "scf": "DCH-02", "nistCsf": "ID.AM-05", "cis": ["3.3.1"],
       "remediation": [
         "Purview portal > Information protection > Sensitivity labels: create labels (for example Public, Internal, Confidential, Highly Confidential).",
         "Publish them with a label policy to all users and set a default label; consider requiring a label on documents and email.",

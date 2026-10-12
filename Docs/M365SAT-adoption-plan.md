@@ -17,7 +17,7 @@ Effort: S = under half a day, M = 1-2 days, L = several days.
 | 2 | Exchange and SharePoint gaps | **Done**, live-verified | Audit log (`PUR-001`), OneDrive sync (`SPO-005`) and Outlook on the web storage providers (`EXO-008`, CIS 6.5.3) covered. `EXO-008` was run live as Global Reader on 2026-10-12: the role can read `Get-OwaMailboxPolicy`, and the test tenant's default policy allows additional storage providers (a real Gap). |
 | 3 | Evidence files | **Done**, live-verified | `-IncludeEvidence`; formula injection tested offline only (no live item started with `=+-@`). |
 | 4 | CIS view | **Done**, live-verified | `-CisView`. **No L1/L2 level**: the mapping has no level data. |
-| 5 | CIS coverage generator | **Built**, not yet run on the licensed list | `Docs/Get-CisCoverage.ps1` reads your own benchmark CSV and reports Covered / Partial / Missing per recommendation. Tested with invented data only; the CSV and its report are git-ignored because they hold CIS content. No finding uses the new optional `cisPartial` field yet. |
+| 5 | CIS coverage generator | **Done**, run on the v7.0.0 benchmark | `Docs/Get-CisCoverage.ps1` against the 158 recommendations in CIS Microsoft 365 Foundations v7.0.0: **70 Covered, 2 Partial, 86 Missing**. The run found 17 existing findings that matched a recommendation but had no CIS number; they are now tagged (61 of 98 findings carry `cis`). See "CIS coverage against v7.0.0". The benchmark list and the report stay local and git-ignored. |
 | 6 | Pester suite, CI and analyzer | **Done** | 949 offline tests, each feature checked by breaking it in a copy. GitHub Actions runs Pester on Linux, macOS and Windows plus PSScriptAnalyzer (`.github/workflows/ci.yml`; rule exclusions and reasons in `PSScriptAnalyzerSettings.psd1`). |
 | 7 | Sovereign cloud validation | **Wired, not live-tested** | One cloud table drives all services; only `Global` is live-tested. Germany rejected. |
 | 8 | Azure subscription domain | **Not started** | Still needs the dependency decision (see below). |
@@ -32,7 +32,7 @@ The comparison counted 10 covered, 2 partial and 12 missing of 24. Re-reading th
 - **Partial: 2.** `CISMAz5111` (we require baseline protection rather than "Security Defaults disabled", the opposite polarity) and `CISMAz5131` (dynamic guest group, related to `ENT-GRP-002` with opposite polarity).
 - **Still missing: 2.** `CISMAz5124` (Entra admin centre access restricted; confirm a Graph source exists) and `CISAz65` (SSPR methods required).
 
-This is an estimate by title, not a CIS benchmark score: M365SAT ships only about 24 inspectors, and our own CIS references number 44 of 98 findings.
+This is an estimate by title, not a CIS benchmark score: M365SAT ships only about 24 inspectors, and our own CIS references number 61 of 98 findings.
 
 ## 2. What is left
 
@@ -81,8 +81,22 @@ Audit log search enabled, OneDrive sync restrictions and Outlook on the web stor
 ### 4. CIS view of the report (S): done (without L1/L2)
 `-CisView` regroups findings by CIS recommendation number and benchmark section. It states that it is not a score against the whole benchmark.
 
-### 5. CIS coverage generator (S): built
-`pwsh ./Docs/Get-CisCoverage.ps1 -BenchmarkCsv <your export>`. Needs a CSV with `Recommendation` and `Title` columns (optional `Level`, `Section`) taken from the licensed CIS download. A recommendation is Covered when a finding lists it in `cis`, Partial when only `cisPartial` does, otherwise Missing; mapped numbers absent from the CSV are listed so typos and version mismatches show up. Next step: run it on the real list and decide which Missing items are worth building.
+### 5. CIS coverage generator (S): done
+`pwsh ./Docs/Get-CisCoverage.ps1 -BenchmarkCsv <your export>`. Needs a CSV with `Recommendation` and `Title` columns (optional `Level`, `Section`) taken from the licensed CIS download. A recommendation is Covered when a finding lists it in `cis`, Partial when only `cisPartial` does, otherwise Missing; mapped numbers absent from the CSV are listed so typos and version mismatches show up.
+
+#### CIS coverage against v7.0.0 (run 2026-10-12)
+158 recommendations (116 Level 1, 47 Level 2 by the benchmark's E3/E5 profiles), of which **70 are Covered, 2 Partial and 86 Missing**. Every `cis` number in the mapping exists in v7.0.0 and its title matches the finding. Partial: `1.1.2` (`ENT-CA-009` only nominates candidates) and `5.2.4.1` (`ENT-POL-007` checks that SSPR is on, not that it is set to All).
+
+Worth building, cheapest first (all read-only, Global Reader should suffice):
+
+1. **Conditional Access policy checks, no new API (about 8):** `5.2.2.2` MFA for all users, `5.2.2.4` sign-in frequency for admins, `5.2.2.5` phishing-resistant MFA for admins, `5.2.2.10` managed device to register security info, `5.2.2.12` device code flow blocked, `5.2.2.17` authentication transfer blocked, and `5.2.2.13`, `5.2.2.15`, `5.2.2.16` if the policy fields allow. The policies are already cached.
+2. **SharePoint tenant settings, same call as today (about 8):** `7.2.2`, `7.2.4`, `7.2.7`, `7.2.9`, `7.2.10`, `7.2.11`, `7.3.1`, and `7.2.8` if it is readable.
+3. **Entra tenant policies (about 10):** `5.1.3.1` security group creation, `5.1.4.1` to `5.1.4.4` device join and local admin, `5.1.4.6` BitLocker key recovery, `5.1.5.3` to `5.1.5.6` application password and certificate lifetimes, `5.2.3.6` / `5.2.3.7` / `5.2.3.10` from the authentication methods policy, `5.3.5` PIM approval for Privileged Role Administrator.
+4. **Identity hygiene (3):** `1.1.1` admin accounts cloud-only, `1.1.4` admin licences with a reduced footprint, `5.2.4.2` to `5.2.4.5` SSPR details if the policy is readable.
+5. **Exchange (about 8):** `6.5.5` Direct Send rejected (next to `EXO-004`), `6.1.2` / `6.1.3` mailbox audit actions and bypass, `6.5.2` MailTips, `6.3.1` / `6.3.2` add-ins and personal accounts, `2.1.3`, `2.1.11`, `2.1.15`, `2.4.1` / `2.4.2` / `2.4.5`.
+6. **Teams (2):** `8.4.1` app permission policies, `8.5.8` external meeting chat.
+
+Defer: the 12 Power BI / Fabric recommendations (`9.1.x`, a new domain and API), and settings that exist only in a portal (`5.1.2.4`, `5.1.2.5`, `5.1.2.6`, most of `1.3.x`, `2.2.1`, `2.4.3`, `5.1.8.1`, `5.2.3.3`). Each needs a Graph or cmdlet source confirmed first.
 
 ### 6. Pester suite and CI check (M): done
 Covers findings and scoring, the compare cmdlet, DNS helper, mapping integrity, every new collector with fake Graph or fake cmdlets, report rendering, sessions, clouds and the generated documentation.
@@ -102,6 +116,6 @@ Opt-in `Azure` domain with read-only checks (Defender for Cloud plans, storage p
 - Credentials as command-line parameters (keep certificate, device code and interactive).
 
 ## 6. Suggested order from here
-1. Run the CIS coverage generator on the licensed list and pick gaps to build.
+1. Build the CIS Missing groups in the order above (Conditional Access first).
 2. Report layout fix for narrow screens.
 3. Live tests in a sovereign cloud when a tenant is available, then the Azure domain once the dependency decision is made.
