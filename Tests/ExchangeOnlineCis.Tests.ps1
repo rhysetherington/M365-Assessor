@@ -78,9 +78,22 @@ Describe 'EXO-011 personal accounts in Outlook on the web (CIS 6.3.2)' {
         $policies = '[{"Name":"D","IsDefault":true,"PersonalAccountsEnabled":false,"PersonalAccountCalendarsEnabled":false},{"Name":"Sales","IsDefault":false,"PersonalAccountsEnabled":true,"PersonalAccountCalendarsEnabled":true}]'
         (Invoke-Exo -Set @{ 'Get-OwaMailboxPolicy' = $policies })['EXO-011'].Status | Should -Be 'Pass'
     }
-    It 'is NotAssessed when there is no default policy or the setting is missing' {
+    It 'is NotAssessed when there is no default policy' {
         (Invoke-Exo -Set @{ 'Get-OwaMailboxPolicy' = '[{"Name":"X","IsDefault":false}]' })['EXO-011'].Status | Should -Be 'NotAssessed'
-        (Invoke-Exo -Set @{ 'Get-OwaMailboxPolicy' = '[{"Name":"D","IsDefault":true,"PersonalAccountsEnabled":false}]' })['EXO-011'].Status | Should -Be 'NotAssessed'
+    }
+    It 'is NotAssessed, not a pass, when one setting is off and the other is not returned' {
+        $f = (Invoke-Exo -Set @{ 'Get-OwaMailboxPolicy' = '[{"Name":"D","IsDefault":true,"PersonalAccountsEnabled":false}]' })['EXO-011']
+        $f.Status | Should -Be 'NotAssessed'
+        $f.Detail | Should -BeLike '*PersonalAccountCalendarsEnabled was not returned*'
+    }
+    It 'is still a gap when one setting is on and the other is not returned (seen in a real tenant)' {
+        $f = (Invoke-Exo -Set @{ 'Get-OwaMailboxPolicy' = '[{"Name":"D","IsDefault":true,"PersonalAccountsEnabled":null,"PersonalAccountCalendarsEnabled":true}]' })['EXO-011']
+        $f.Status | Should -Be 'Gap'
+        @($f.AffectedObjects) | Should -Be @('D: PersonalAccountCalendarsEnabled = True')
+        $f.Detail | Should -BeLike '*PersonalAccountsEnabled = not returned*PersonalAccountsEnabled was not returned*'
+    }
+    It 'is NotAssessed when neither setting is returned' {
+        (Invoke-Exo -Set @{ 'Get-OwaMailboxPolicy' = '[{"Name":"D","IsDefault":true}]' })['EXO-011'].Status | Should -Be 'NotAssessed'
     }
 }
 
@@ -144,6 +157,14 @@ Describe 'EXO-014 mailbox audit actions (CIS 6.1.2)' {
         $f = (Invoke-Exo -Set @{ 'Get-EXOMailbox' = @($bare) })['EXO-014']
         $f.Status | Should -Be 'NotAssessed'
         $f.Detail | Should -BeLike '*AuditAdmin*'
+    }
+    It 'reports the Microsoft default audit set as a gap, naming what CIS expects beyond it (seen in a real tenant)' {
+        $admin = 'Update', 'MoveToDeletedItems', 'SoftDelete', 'HardDelete', 'SendAs', 'SendOnBehalf', 'Create', 'UpdateFolderPermissions', 'UpdateInboxRules', 'UpdateCalendarDelegation', 'ApplyRecord', 'MailItemsAccessed', 'Send'
+        $delegate = 'Update', 'MoveToDeletedItems', 'SoftDelete', 'HardDelete', 'SendAs', 'SendOnBehalf', 'Create', 'UpdateFolderPermissions', 'UpdateInboxRules', 'ApplyRecord', 'MailItemsAccessed'
+        $owner = 'Update', 'MoveToDeletedItems', 'SoftDelete', 'HardDelete', 'Create', 'UpdateFolderPermissions', 'UpdateInboxRules', 'UpdateCalendarDelegation', 'ApplyRecord', 'MailItemsAccessed', 'Send'
+        $f = (Invoke-Exo -Set @{ 'Get-EXOMailbox' = @(New-Mailbox -Admin $admin -Delegate $delegate -Owner $owner) })['EXO-014']
+        $f.Status | Should -Be 'Gap'
+        $f.AffectedObjects | Should -BeLike '*AuditAdmin missing Copy, FolderBind, Move*AuditDelegate missing FolderBind, Move*AuditOwner missing MailboxLogin, Move*'
     }
     It 'caps a long list and says how many more there are' {
         $many = @(1..105 | ForEach-Object { New-Mailbox -Upn "u$_@contoso.com" -Enabled $false })

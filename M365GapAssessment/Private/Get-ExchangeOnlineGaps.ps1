@@ -96,11 +96,21 @@ function Get-ExchangeOnlineGaps {
             $default = @(Get-OwaMailboxPolicy | Where-Object { $_.IsDefault }) | Select-Object -First 1
             if (-not $default) { throw 'No default Outlook on the web mailbox policy was returned.' }
             $props = 'PersonalAccountsEnabled', 'PersonalAccountCalendarsEnabled'
+            # Exchange Online can return an empty PersonalAccountsEnabled. A setting that is on is a Gap whatever the other one says;
+            # a pass needs both to be read and off.
             $unknown = @($props | Where-Object { $null -eq $default.$_ })
-            if ($unknown.Count) { throw "$($unknown -join ', ') was not returned for $($default.Name)." }
-            $on = @($props | Where-Object { $default.$_ })
-            New-Finding -Id 'EXO-011' -Status $(if ($on.Count) { 'Gap' } else { 'Pass' }) -AffectedObjects @($on | ForEach-Object { "$($default.Name): $_ = True" }) `
-                -Detail "Default Outlook on the web policy '$($default.Name)': $(($props | ForEach-Object { "$_ = $($default.$_)" }) -join '; ')."
+            $on = @($props | Where-Object { $null -ne $default.$_ -and $default.$_ })
+            $state = ($props | ForEach-Object { "$_ = $(if ($null -eq $default.$_) { 'not returned' } else { $default.$_ })" }) -join '; '
+            if ($on.Count) {
+                New-Finding -Id 'EXO-011' -Status Gap -AffectedObjects @($on | ForEach-Object { "$($default.Name): $_ = True" }) `
+                    -Detail "Default Outlook on the web policy '$($default.Name)': $state.$(if ($unknown.Count) { " $($unknown -join ', ') was not returned and could not be evaluated." })"
+            }
+            elseif ($unknown.Count) {
+                New-Finding -Id 'EXO-011' -Status NotAssessed -Detail "Default Outlook on the web policy '$($default.Name)': $state. $($unknown -join ', ') was not returned, so the policy cannot be shown to block personal accounts."
+            }
+            else {
+                New-Finding -Id 'EXO-011' -Status Pass -Detail "Default Outlook on the web policy '$($default.Name)': $state."
+            }
         }
 
         Invoke-Collector -Name 'Outlook add-in installation' -FindingIds 'EXO-012' -Script {
@@ -113,7 +123,7 @@ function Get-ExchangeOnlineGaps {
         }
 
         Invoke-Collector -Name 'Mailbox audit bypass' -FindingIds 'EXO-013' -Script {
-            $bypass = @(Get-MailboxAuditBypassAssociation -ResultSize Unlimited | Where-Object { $_.AuditBypassEnabled -eq $true } | ForEach-Object { [string]$_.Name })
+            $bypass = @(Get-MailboxAuditBypassAssociation -ResultSize Unlimited -WarningAction SilentlyContinue | Where-Object { $_.AuditBypassEnabled -eq $true } | ForEach-Object { [string]$_.Name })
             New-Finding -Id 'EXO-013' -Status $(if ($bypass.Count) { 'Gap' } else { 'Pass' }) -AffectedObjects $bypass `
                 -Detail "$($bypass.Count) account(s) are excluded from mailbox auditing (AuditBypassEnabled). Accounts on bypass leave no audit trail for what they read or change."
         }
