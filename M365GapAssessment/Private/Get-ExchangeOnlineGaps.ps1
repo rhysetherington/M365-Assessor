@@ -3,7 +3,7 @@ function Get-ExchangeOnlineGaps {
     .SYNOPSIS
         Exchange Online collector (opt-in domain 'ExchangeOnline'): forwarding, audit, modern auth, SMTP AUTH, shared mailbox sign-in, anti-phish, Safe Links.
     .DESCRIPTION
-        Needs the ExchangeOnlineManagement module and a separate interactive sign-in. Only Get-* cmdlets are used.
+        Needs the ExchangeOnlineManagement module and a separate interactive sign-in (shared with the DefenderO365 domain). Only Get-* cmdlets are used.
         If the module is missing or the connection fails, every check is reported NotAssessed rather than aborting the run.
     #>
     [CmdletBinding()]
@@ -11,20 +11,11 @@ function Get-ExchangeOnlineGaps {
 
     $ids = 'EXO-001', 'EXO-002', 'EXO-003', 'EXO-004', 'EXO-005', 'EXO-006', 'EXO-007'
 
-    if (-not (Get-Module -ListAvailable -Name ExchangeOnlineManagement)) {
-        foreach ($id in $ids) { New-Finding -Id $id -Status NotAssessed -Detail 'ExchangeOnlineManagement module is not installed (Install-Module ExchangeOnlineManagement -Scope CurrentUser).' }
-        return
-    }
-
     Write-Progress -Id 2 -ParentId 1 -Activity 'Exchange Online' -Status 'Connecting' -PercentComplete 5
-    try {
-        Import-Module ExchangeOnlineManagement -ErrorAction Stop
-        $conn = @{ ShowBanner = $false; ErrorAction = 'Stop' }
-        if ($TenantId) { $conn.Organization = $TenantId }
-        Connect-ExchangeOnline @conn
-    }
-    catch {
-        foreach ($id in $ids) { New-Finding -Id $id -Status NotAssessed -Detail "Could not connect to Exchange Online: $((($_.Exception.Message -split '\r?\n')[0]))" }
+    $session = Start-ExchangeSession -TenantId $TenantId
+    if (-not $session.Ready) {
+        foreach ($id in $ids) { New-Finding -Id $id -Status NotAssessed -Detail $session.Error }
+        Write-Progress -Id 2 -ParentId 1 -Activity 'Exchange Online' -Completed
         return
     }
 
@@ -74,7 +65,7 @@ function Get-ExchangeOnlineGaps {
         }
     }
     finally {
-        Disconnect-ExchangeOnline -Confirm:$false -ErrorAction SilentlyContinue | Out-Null
+        # The Exchange session is shared with the DefenderO365 domain and closed by Invoke-M365SecurityReview.
         Write-Progress -Id 2 -ParentId 1 -Activity 'Exchange Online' -Completed
     }
 }

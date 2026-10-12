@@ -34,16 +34,21 @@ function Protect-ExportPath {
     [CmdletBinding()]
     param([Parameter(Mandatory)][string]$Path)
     if ($IsWindows) { return }
+    # Recurse so subfolders such as evidence/ get the same protection as the reports.
+    $dirs = @(Get-ChildItem -LiteralPath $Path -Directory -Recurse -ErrorAction SilentlyContinue)
+    $files = @(Get-ChildItem -LiteralPath $Path -File -Recurse -ErrorAction SilentlyContinue)
     try {
         if ([IO.File].GetMethod('SetUnixFileMode', [type[]]@([string], [IO.UnixFileMode]))) {
             [IO.File]::SetUnixFileMode($Path, [IO.UnixFileMode]'UserRead,UserWrite,UserExecute')
-            foreach ($f in Get-ChildItem -LiteralPath $Path -File) { [IO.File]::SetUnixFileMode($f.FullName, [IO.UnixFileMode]'UserRead,UserWrite') }
+            foreach ($d in $dirs) { [IO.File]::SetUnixFileMode($d.FullName, [IO.UnixFileMode]'UserRead,UserWrite,UserExecute') }
+            foreach ($f in $files) { [IO.File]::SetUnixFileMode($f.FullName, [IO.UnixFileMode]'UserRead,UserWrite') }
             return
         }
     }
     catch { }
     if (Get-Command chmod -ErrorAction SilentlyContinue) {
         & chmod 700 $Path
-        Get-ChildItem -LiteralPath $Path -File | ForEach-Object { & chmod 600 $_.FullName }
+        foreach ($d in $dirs) { & chmod 700 $d.FullName }
+        foreach ($f in $files) { & chmod 600 $f.FullName }
     }
 }

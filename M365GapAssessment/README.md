@@ -85,6 +85,8 @@ For the full list of checks by administration console, and what is **not** cover
 |---|---|
 | `Licensing` | Reads `subscribedSkus`; flags a tenant with no Entra ID P1/P2. Also explains NotAssessed results caused by a missing licence. |
 | `ExchangeOnline` | **Opt-in** (`-Domain ...,ExchangeOnline`). Forwarding, mailbox audit, modern auth, SMTP AUTH, shared mailbox sign-in, anti-phish, Safe Links. Needs `Install-Module ExchangeOnlineManagement` and a second interactive sign-in (Get-* cmdlets only); reported NotAssessed if the module is absent. |
+| `DefenderO365` | **Opt-in** (`-Domain ...,DefenderO365`). Safe Attachments (mail, SharePoint, OneDrive, Teams), Safe Links click-through and tracking, anti-malware, anti-spam allow lists and thresholds, outbound spam alerts, preset security policies, mail flow rules that bypass filtering or redirect mail, connection filter lists, external sender tag, Teams zero-hour auto purge, user reporting. Shares the Exchange Online sign-in with the `ExchangeOnline` domain. |
+| `Purview` | **Opt-in** (`-Domain ...,Purview`). Unified audit log, DLP policies and workload coverage, sensitivity labels, retention, insider risk. Uses `Connect-IPPSSession` (its own sign-in); needs `Install-Module ExchangeOnlineManagement`. |
 | `Teams` | **Opt-in** (`-Domain ...,Teams`). External federation, unmanaged/trial tenant access, anonymous join and lobby, meeting chat, presenter and recording controls, third-party storage, email into channels, user security reporting. Needs `Install-Module MicrosoftTeams` and a separate interactive sign-in (Get-* cmdlets only). |
 | `SharePoint` | Tenant external sharing level, guest resharing, domain restrictions, legacy auth, unmanaged-device sync (Graph `/admin/sharepoint/settings`; needs the `SharePointTenantSettings.Read.All` scope, which prompts for consent on the next sign-in). |
 | `EntraID` | Conditional Access baseline, PIM permanence, MFA registration, stale accounts, app credentials and application permissions, guests in privileged groups |
@@ -106,9 +108,42 @@ names, but use `-DohEndpoint` to choose another resolver or `-Domain` without `E
 | `AssessmentFindings.json` | Full raw findings (always written) |
 | `M365_Security_Gap_Assessment.md` | Executive summary, NIST CSF 2.0 / SCF matrix, per-domain findings with remediation steps |
 | `M365_Security_Gap_Assessment.html` | Client-ready styled version (`-Format HTML`) |
+| `evidence/<FindingId>.csv`, `evidence/_index.csv` | With `-IncludeEvidence`: the full list of affected items for each Gap (the reports show the first 25), linked from the reports. Names that start with `=`, `+`, `-` or `@` get a leading apostrophe so a spreadsheet cannot run them as formulas. No tenant ID is written. |
+
+Optional report additions (also available on `Export-M365GapReport` and `Convert-M365Report`):
+
+- `-IncludeEvidence`: write the evidence files above (the evidence folder gets the same 700/600 permissions as the reports on macOS and Linux).
+- `-CisView`: add a section that regroups findings by CIS Microsoft 365 Foundations recommendation number and benchmark section.
+  Only CIS-mapped checks appear, so it is **not** a score against the whole benchmark; recommendation numbers follow the control
+  mapping, so check them against the benchmark version a client uses.
 
 Each check ends as **Gap**, **Pass** or **NotAssessed**. NotAssessed means Graph refused the call (missing licence such
 as Entra ID P2 for PIM, Intune or Defender, or missing consent) and is reported separately rather than counted as a pass.
+
+## Sovereign clouds (GCC High, DoD, China)
+
+`-Environment` selects the Microsoft cloud for the whole run. Microsoft Graph, Exchange Online, Security & Compliance (Purview)
+and Teams are all sent to the **same** cloud, and the run stops if the Graph session lands in a different cloud than requested.
+GCC (Moderate) tenants use the commercial endpoints: use `Global`.
+
+| `-Environment` | Cloud | Graph | Exchange / Purview | Teams | Live-tested |
+|---|---|---|---|---|---|
+| `Global` | Microsoft 365 commercial, GCC | yes | `O365Default` | yes | **yes** |
+| `USGov` | US Government GCC High | wired | `O365USGovGCCHigh` | `TeamsGCCH` | **no** |
+| `USGovDoD` | US Government DoD | wired | `O365USGovDoD` | `TeamsDOD` | **no** |
+| `China` | Operated by 21Vianet | wired | `O365China` | not supported (Teams checks report NotAssessed) | **no** |
+
+Be clear about what this means: only `Global` has been run against a real tenant. The other clouds are wired to Microsoft's
+documented parameters and covered by offline tests of the wiring, but they have **not been tested live**, and the tool warns when
+you select one. Some Graph endpoints this tool uses (including beta endpoints and the SharePoint tenant settings) may not be
+offered in every sovereign cloud; those checks come back as NotAssessed, not as a wrong answer. Please review results before
+relying on them, and report what you find. The retired Microsoft Cloud Germany is rejected. The DNS checks use public
+DNS-over-HTTPS (Cloudflare by default) on macOS and Linux, which a government network may block: use `-DohEndpoint` to choose an
+allowed resolver, or `-Domain` without `EmailDns` to skip them.
+
+```powershell
+Invoke-M365SecurityReview -Environment USGov -TenantId contoso.us -Domain Licensing,EntraID,EntraPolicy
+```
 
 ## Extending
 

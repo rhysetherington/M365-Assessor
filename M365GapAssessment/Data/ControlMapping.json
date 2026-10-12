@@ -691,6 +691,185 @@
         "Exclude both from every Conditional Access policy (directly or through a dedicated group).",
         "Alert on any sign-in by these accounts and test them at least twice a year."
       ]
+    },
+    {
+      "id": "DFO-001", "domain": "Defender for Office 365", "name": "No enabled Safe Attachments policy blocking malicious attachments", "severity": "High",
+      "scf": "END-04", "nistCsf": "DE.CM-09", "license": "DefenderO365",
+      "remediation": [
+        "Defender portal (security.microsoft.com) > Email & collaboration > Policies & rules > Threat policies > Safe Attachments.",
+        "Create a policy for all users with action Block (or Dynamic Delivery) and make sure it is assigned; keep the built-in protection policy.",
+        "Alternatively enable the Standard or Strict preset security policy, which applies Safe Attachments."
+      ]
+    },
+    {
+      "id": "DFO-002", "domain": "Defender for Office 365", "name": "Safe Attachments off for SharePoint, OneDrive and Teams, or Safe Documents click-through allowed", "severity": "Medium",
+      "scf": "END-04", "nistCsf": "DE.CM-09", "license": "DefenderO365",
+      "remediation": [
+        "Defender portal > Email & collaboration > Policies & rules > Threat policies > Safe Attachments > Global settings.",
+        "Turn on 'Turn on Defender for Office 365 for SharePoint, OneDrive, and Microsoft Teams'.",
+        "Turn on Safe Documents and turn off 'Allow people to click through Protected View even if Safe Documents identified the file as malicious'."
+      ]
+    },
+    {
+      "id": "DFO-003", "domain": "Defender for Office 365", "name": "Safe Links allows click-through, does not track clicks or does not scan URLs", "severity": "Medium",
+      "scf": "END-04", "nistCsf": "DE.CM-09", "license": "DefenderO365",
+      "remediation": [
+        "Defender portal > Email & collaboration > Policies & rules > Threat policies > Safe Links > open each policy.",
+        "Turn on real-time URL scanning, track user clicks, and turn off 'Let users click through to the original URL'.",
+        "Apply the policy to all users, or use the Standard or Strict preset security policy."
+      ]
+    },
+    {
+      "id": "DFO-004", "domain": "Defender for Office 365", "name": "Anti-malware policy without common attachment types filter or zero-hour auto purge", "severity": "Medium",
+      "scf": "END-04", "nistCsf": "DE.CM-09",
+      "remediation": [
+        "Defender portal > Email & collaboration > Policies & rules > Threat policies > Anti-malware > open each policy.",
+        "Turn on the common attachments filter and select the file types to block (for example executables and script files).",
+        "Turn on zero-hour auto purge for malware and set admin notifications for internal senders."
+      ]
+    },
+    {
+      "id": "DFO-005", "domain": "Defender for Office 365", "name": "Anti-spam allowed sender or domain lists configured", "severity": "Medium",
+      "scf": "NET-12", "nistCsf": "DE.CM-09",
+      "remediation": [
+        "Defender portal > Email & collaboration > Policies & rules > Threat policies > Anti-spam > open each policy > Allowed and blocked senders and domains.",
+        "Remove allowed senders and domains; use the Tenant Allow/Block List with an expiry for genuine false positives instead.",
+        "Never allow-list your own domains: this lets spoofed internal mail bypass filtering."
+      ]
+    },
+    {
+      "id": "DFO-006", "domain": "Defender for Office 365", "name": "Anti-spam bulk threshold, phishing action or zero-hour auto purge weak", "severity": "Medium",
+      "scf": "NET-12", "nistCsf": "DE.CM-09",
+      "remediation": [
+        "Defender portal > Email & collaboration > Policies & rules > Threat policies > Anti-spam > Inbound policy.",
+        "Set the bulk complaint level threshold to 6 or lower and the high confidence phishing action to Quarantine.",
+        "Turn on zero-hour auto purge for spam and phishing, or apply the Standard or Strict preset security policy."
+      ]
+    },
+    {
+      "id": "DFO-007", "domain": "Defender for Office 365", "name": "Outbound spam: administrators not notified when a user is blocked", "severity": "Low",
+      "scf": "MON-01", "nistCsf": "DE.CM-01",
+      "remediation": [
+        "Defender portal > Email & collaboration > Policies & rules > Threat policies > Anti-spam > Outbound policy.",
+        "Turn on 'Notify these users and groups if a sender is blocked due to sending outbound spam' and add a monitored mailbox or group.",
+        "Investigate every blocked sender: it usually indicates a compromised account."
+      ]
+    },
+    {
+      "id": "DFO-008", "domain": "Defender for Office 365", "name": "Neither Standard nor Strict preset security policy enabled", "severity": "Medium",
+      "scf": "CFG-02", "nistCsf": "PR.PS-01",
+      "remediation": [
+        "Defender portal > Email & collaboration > Policies & rules > Threat policies > Preset security policies.",
+        "Turn on the Standard protection preset for all recipients (and Strict for priority accounts such as executives and administrators).",
+        "Preset policies are maintained by Microsoft, so protection keeps pace with recommended settings."
+      ]
+    },
+    {
+      "id": "DFO-009", "domain": "Defender for Office 365", "name": "Mail flow rules bypass spam filtering (SCL -1)", "severity": "High",
+      "scf": "NET-12", "nistCsf": "DE.CM-09",
+      "remediation": [
+        "Exchange admin center > Mail flow > Rules; open each listed rule.",
+        "Remove the action 'Set the spam confidence level (SCL) to Bypass spam filtering' or restrict it to a narrow, verified source.",
+        "Use the Tenant Allow/Block List or an authenticated connector instead of broad bypass rules."
+      ]
+    },
+    {
+      "id": "DFO-010", "domain": "Defender for Office 365", "name": "Mail flow rules redirect or blind-copy messages (review)", "severity": "Medium",
+      "scf": "NET-12", "nistCsf": "PR.DS-02",
+      "remediation": [
+        "Exchange admin center > Mail flow > Rules; open each listed rule and confirm its business purpose and owner.",
+        "Remove rules that send mail to external recipients without approval; document the ones that remain.",
+        "Alert on creation or change of mail flow rules (Defender portal alert policy)."
+      ]
+    },
+    {
+      "id": "DFO-011", "domain": "Defender for Office 365", "name": "Connection filter IP allow list or safe list in use", "severity": "Medium",
+      "scf": "NET-12", "nistCsf": "DE.CM-09",
+      "remediation": [
+        "Defender portal > Email & collaboration > Policies & rules > Threat policies > Anti-spam > Connection filter policy.",
+        "Remove IP addresses from the allow list and turn off the safe list.",
+        "Route trusted partner mail through an authenticated connector rather than IP allow-listing."
+      ]
+    },
+    {
+      "id": "DFO-012", "domain": "Defender for Office 365", "name": "External sender identification (tag) disabled in Outlook", "severity": "Low",
+      "scf": "NET-12", "nistCsf": "DE.CM-09",
+      "remediation": [
+        "Connect to Exchange Online PowerShell and run Set-ExternalInOutlook -Enabled $true.",
+        "Confirm the tag appears on external mail in Outlook clients, and inform users what it means."
+      ]
+    },
+    {
+      "id": "DFO-013", "domain": "Defender for Office 365", "name": "Zero-hour auto purge disabled for Microsoft Teams", "severity": "Low",
+      "scf": "END-04", "nistCsf": "DE.CM-09", "license": "DefenderO365",
+      "remediation": [
+        "Defender portal > Settings > Email & collaboration > Microsoft Teams protection.",
+        "Turn on zero-hour auto purge so Teams messages found to be malicious after delivery are removed.",
+        "Optionally exclude specific quarantined-message recipients only with documented justification."
+      ]
+    },
+    {
+      "id": "DFO-014", "domain": "Defender for Office 365", "name": "Users cannot report suspicious messages to Microsoft", "severity": "Low",
+      "scf": "IRO-02", "nistCsf": "RS.MA-01",
+      "remediation": [
+        "Defender portal > Settings > Email & collaboration > User reported settings.",
+        "Turn on 'Monitor reported messages in Outlook' and use the built-in Report button; send reports to Microsoft and to your security mailbox.",
+        "Tell users how to report a suspicious message and review reports regularly."
+      ]
+    },
+    {
+      "id": "PUR-001", "domain": "Microsoft Purview", "name": "Unified audit log ingestion is turned off", "severity": "High",
+      "scf": "MON-03", "nistCsf": "PR.PS-04",
+      "remediation": [
+        "Purview portal (purview.microsoft.com) > Audit > Start recording user and admin activity.",
+        "Or run Set-AdminAuditLogConfig -UnifiedAuditLogIngestionEnabled $true in Exchange Online PowerShell (changes can take up to 60 minutes).",
+        "Confirm retention matches your policy (default 180 days; longer with the right licence or an audit retention policy)."
+      ]
+    },
+    {
+      "id": "PUR-002", "domain": "Microsoft Purview", "name": "No enabled and enforcing Data Loss Prevention policy", "severity": "High",
+      "scf": "DCH-01", "nistCsf": "PR.DS-01",
+      "remediation": [
+        "Purview portal > Solutions > Data loss prevention > Policies > Create policy; start from a template that matches your data (for example financial or personal data).",
+        "Run in test mode with notifications first, then switch the policy to 'Turn it on right away'.",
+        "Assign an owner to review matches and false positives weekly."
+      ]
+    },
+    {
+      "id": "PUR-003", "domain": "Microsoft Purview", "name": "DLP does not cover every workload (Exchange, SharePoint, OneDrive, Teams)", "severity": "Medium",
+      "scf": "DCH-01", "nistCsf": "PR.DS-02",
+      "remediation": [
+        "Purview portal > Data loss prevention > Policies > edit each policy > Locations.",
+        "Add Exchange email, SharePoint sites, OneDrive accounts and Teams chat and channel messages to enforcing policies.",
+        "Confirm each location's scope (all users or specific groups) matches the data you need to protect."
+      ]
+    },
+    {
+      "id": "PUR-004", "domain": "Microsoft Purview", "name": "No sensitivity labels published to users", "severity": "Medium",
+      "scf": "DCH-02", "nistCsf": "ID.AM-05",
+      "remediation": [
+        "Purview portal > Information protection > Sensitivity labels: create labels (for example Public, Internal, Confidential, Highly Confidential).",
+        "Publish them with a label policy to all users and set a default label; consider requiring a label on documents and email.",
+        "Consider auto-labelling for the most sensitive information types."
+      ]
+    },
+    {
+      "id": "PUR-005", "domain": "Microsoft Purview", "name": "No enabled retention policy", "severity": "Medium",
+      "scf": "DCH-18", "nistCsf": "PR.DS-11",
+      "remediation": [
+        "Purview portal > Data lifecycle management > Retention policies > New retention policy.",
+        "Cover Exchange, SharePoint, OneDrive and Teams according to your legal and business retention schedule.",
+        "Use 'retain then delete' only with approval from legal or compliance, since deletion is permanent."
+      ]
+    },
+    {
+      "id": "PUR-006", "domain": "Microsoft Purview", "name": "No insider risk management policy configured", "severity": "Low",
+      "scf": "MON-16", "nistCsf": "DE.CM-03",
+      "remediation": [
+        "Requires a Microsoft Purview premium licence (for example Microsoft 365 E5 or the Insider Risk add-on).",
+        "Purview portal > Solutions > Insider risk management: configure settings, then create a policy from a template (for example data leaks or departing employees).",
+        "Agree privacy and HR review procedures before turning policies on."
+      ]
     }
   ]
 }

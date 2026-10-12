@@ -74,6 +74,11 @@ function New-AssessmentMarkdown {
         $md.Add("| $($row.Nist) | $($row.Scf) | $($row.Status) | $($row.Finding) |")
     }
     $md.Add('')
+    if ($Branding.CisView) {
+        $cisView = Get-CisView -Findings $f
+        if ($cisView) { foreach ($line in (Get-CisViewMarkdown -View $cisView)) { $md.Add($line) } }
+        else { $md.Add('## CIS Microsoft 365 Foundations View'); $md.Add(''); $md.Add('No finding in this assessment carries a CIS reference.'); $md.Add('') }
+    }
     $md.Add('## Detailed Findings by Domain')
     foreach ($domain in ($gaps | Group-Object Domain | Sort-Object Name)) {
         $md.Add('')
@@ -88,7 +93,9 @@ function New-AssessmentMarkdown {
             if ($g.AffectedCount -gt 0) {
                 $md.Add("- **Affected ($($g.AffectedCount)):**")
                 foreach ($a in ($g.AffectedObjects | Select-Object -First 25)) { $md.Add("  - $(ConvertTo-MdCell $a)") }
-                if ($g.AffectedCount -gt 25) { $md.Add("  - ...and $($g.AffectedCount - 25) more (see AssessmentFindings.json)") }
+                $evidence = Get-EvidenceLink -Finding $g -Branding $Branding
+                if ($g.AffectedCount -gt 25) { $md.Add("  - ...and $($g.AffectedCount - 25) more ($(if ($evidence) { "see $evidence" } else { 'see AssessmentFindings.json' }))") }
+                if ($evidence) { $md.Add("- **Evidence:** [$evidence]($evidence) (all $($g.AffectedCount) items)") }
             }
             if ($g.Workloads) {
                 $md.Add('')
@@ -297,8 +304,10 @@ $(if ($sum.NotAssessed) { "<div class=`"stat`"><b>$($sum.NotAssessed)</b><span>n
             if ($g.AffectedCount -gt 0) {
                 & $add "<b>Affected ($($g.AffectedCount))</b><ul>"
                 foreach ($a in ($g.AffectedObjects | Select-Object -First 25)) { & $add "<li>$(& $enc $a)</li>" }
-                if ($g.AffectedCount -gt 25) { & $add "<li>&hellip;and $($g.AffectedCount - 25) more (see AssessmentFindings.json)</li>" }
+                $evidence = Get-EvidenceLink -Finding $g -Branding $Branding
+                if ($g.AffectedCount -gt 25) { & $add "<li>&hellip;and $($g.AffectedCount - 25) more ($(if ($evidence) { 'see ' + (& $enc $evidence) } else { 'see AssessmentFindings.json' }))</li>" }
                 & $add '</ul>'
+                if ($evidence) { & $add "<p class=`"meta`">Evidence file: <a href=`"$(& $enc $evidence)`">$(& $enc $evidence)</a> (all $($g.AffectedCount) items)</p>" }
             }
             & $add '<b>Remediation</b><ol>'
             foreach ($step in $g.Remediation) { & $add "<li>$(& $enc $step)</li>" }
@@ -315,6 +324,11 @@ $(if ($sum.NotAssessed) { "<div class=`"stat`"><b>$($sum.NotAssessed)</b><span>n
         & $add "<tr><td>$(& $enc $row.Nist)</td><td>$(& $enc $row.Scf)</td><td class=`"$cls`">$(& $enc $row.Status)</td><td>$(& $enc $row.Finding)</td></tr>"
     }
     & $add '</table></div></details>'
+    if ($Branding.CisView) {
+        $cisView = Get-CisView -Findings $f
+        if ($cisView) { & $add (Get-CisViewHtml -View $cisView) }
+        else { & $add '<details><summary>CIS Microsoft 365 Foundations view</summary><div class="body"><p class="meta">No finding in this assessment carries a CIS reference.</p></div></details>' }
+    }
     if ($Assessment.Licensing) {
         & $add '<details><summary>Licensing context</summary><div class="body"><table><tr><th>Capability</th><th>Licensed</th></tr>'
         foreach ($cap in $Assessment.Licensing.Capabilities.PSObject.Properties) {
@@ -338,19 +352,32 @@ function Export-M365GapReport {
     <#
     .SYNOPSIS
         Writes AssessmentFindings.json (always) plus Markdown and/or HTML reports for an assessment object.
+    .PARAMETER CisView
+        Adds a section that regroups findings by CIS Microsoft 365 Foundations recommendation number and benchmark section.
+    .PARAMETER IncludeEvidence
+        Also writes evidence/<FindingId>.csv (the full list of affected items for each Gap finding) and evidence/_index.csv, and
+        links them from the reports. Values are neutralised against spreadsheet formula injection.
     #>
     [CmdletBinding()]
     param(
         [Parameter(Mandatory, ValueFromPipeline)]$Assessment,
         [Parameter(Mandatory)][string]$ExportPath,
         [ValidateSet('JSON', 'HTML', 'Markdown')][string[]]$Format = @('JSON', 'Markdown'),
-        [hashtable]$Branding = @{}
+        [hashtable]$Branding = @{},
+        [switch]$IncludeEvidence,
+        [switch]$CisView
     )
 
     process {
         try {
             $null = New-Item -ItemType Directory -Path $ExportPath -Force -ErrorAction Stop
             $written = [System.Collections.Generic.List[string]]::new()
+
+            # Evidence first, so each finding carries its EvidenceFile path into the JSON and the reports.
+            if ($IncludeEvidence) { foreach ($e in @(Write-EvidenceFiles -Assessment $Assessment -Folder $ExportPath)) { $written.Add($e) } }
+            $Branding = @{} + $Branding
+            $Branding.EvidenceRoot = $ExportPath
+            if ($CisView) { $Branding.CisView = $true }
 
             $base = Get-AssessmentBaseName -Assessment $Assessment
             $jsonPath = Join-Path $ExportPath $(if ($base) { "$base-Findings.json" } else { 'AssessmentFindings.json' })

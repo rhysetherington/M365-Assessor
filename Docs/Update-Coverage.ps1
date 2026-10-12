@@ -26,7 +26,9 @@ function Get-Console {
     param([string]$Id)
     switch -Regex ($Id) {
         '^ENT-(AUTH-007|GRP-003)$|^LIC-001$' { return 'Microsoft 365 admin center' }
-        '^(DEF-ALR|DEF-INC|SSC-|EXO-006|EXO-007|EML-003)' { return 'Microsoft Defender portal' }
+        '^DFO-(009|010|012)$' { return 'Exchange admin center' }
+        '^(DEF-ALR|DEF-INC|SSC-|EXO-006|EXO-007|EML-003|DFO-)' { return 'Microsoft Defender portal' }
+        '^PUR-' { return 'Microsoft Purview portal' }
         '^EXO-' { return 'Exchange admin center' }
         '^EML-00[12]$' { return 'DNS (public records)' }
         '^TMS-' { return 'Teams admin center' }
@@ -36,7 +38,7 @@ function Get-Console {
     }
 }
 
-$consoleOrder = 'Microsoft Entra admin center', 'Microsoft Defender portal', 'Exchange admin center', 'Teams admin center',
+$consoleOrder = 'Microsoft Entra admin center', 'Microsoft Defender portal', 'Microsoft Purview portal', 'Exchange admin center', 'Teams admin center',
     'SharePoint admin center', 'Intune admin center', 'Microsoft 365 admin center', 'DNS (public records)'
 
 $bySeverity = $controls | Group-Object severity -AsHashTable -AsString
@@ -65,7 +67,9 @@ All checks are read-only (Graph `GET`, or `Get-*` cmdlets for Exchange, Teams an
 | `SecureScore` | yes | Graph | Score versus target, unimplemented controls |
 | `EmailDns` | yes | Public DNS (DNS-over-HTTPS on macOS/Linux) | SPF, DMARC, DKIM for verified custom domains |
 | `SharePoint` | yes | Graph (`SharePointTenantSettings.Read.All`) | Tenant sharing and sync settings |
-| `ExchangeOnline` | **opt-in** | `ExchangeOnlineManagement` module | Mail and Defender for Office 365 policy checks |
+| `ExchangeOnline` | **opt-in** | `ExchangeOnlineManagement` module | Forwarding, mailbox audit, modern auth, SMTP AUTH, shared mailboxes, anti-phishing, Safe Links |
+| `DefenderO365` | **opt-in** | `ExchangeOnlineManagement` module (shares the Exchange sign-in) | Safe Attachments, Safe Links settings, anti-malware, anti-spam, preset policies, mail flow rules that bypass filtering, connection filter, external sender tag, Teams ZAP, user reporting |
+| `Purview` | **opt-in** | `ExchangeOnlineManagement` module (`Connect-IPPSSession`, its own sign-in) | Unified audit log, DLP, sensitivity labels, retention, insider risk |
 | `Teams` | **opt-in** | `MicrosoftTeams` module | Teams tenant policies |
 
 ## 2. Coverage by administration console
@@ -79,9 +83,9 @@ No findings exist for these areas. They are the roadmap, roughly in priority ord
 
 | Area | Not yet checked | Why it is harder |
 |---|---|---|
-| **Microsoft Purview** | DLP policies, sensitivity labels, retention, audit log search, data security posture | Needs the Exchange Online compliance cmdlets (separate connection and permission model) |
-| **Defender for Office 365 (depth)** | Safe Attachments, anti-spam and anti-malware policies, preset security policies, quarantine policies | Exchange Online PowerShell; only one policy type each for anti-phishing and Safe Links today |
-| **Exchange (depth)** | Mail flow (transport) rules, connectors, external sender tagging, OWA policies, mailbox permissions, calendar sharing | Exchange Online PowerShell |
+| **Microsoft Purview (depth)** | Auto-labeling and mandatory-labeling settings, sensitive information types, communication compliance, eDiscovery and audit retention policies, data security posture | Compliance PowerShell objects with licence-dependent availability |
+| **Defender for Office 365 (depth)** | Quarantine policies, impersonation and mailbox-intelligence settings, tenant allow/block list review, attack simulation training | Exchange Online PowerShell; several settings are portal-only |
+| **Exchange (depth)** | Connectors, OWA policies, mailbox permissions and delegation, calendar sharing, mailbox audit bypass | Exchange Online PowerShell |
 | **Intune (depth)** | Enrollment restrictions, app protection (MAM), update rings, configuration baselines | Graph beta; the tenant may have no managed devices, so results are often NotAssessed |
 | **Entra (depth)** | Device join and registration settings, session controls and token protection, authentication contexts, workload identities, cross-tenant sync, PIM for groups, entitlement management | Some settings have no stable Graph surface |
 | **Microsoft 365 admin center (org settings)** | Idle session timeout, Forms, Sway, Bookings, Copilot and AI settings, Office on the web | Several settings are exposed only in the portal |
@@ -94,7 +98,7 @@ No findings exist for these areas. They are the roadmap, roughly in priority ord
 ## 4. Where coverage is deepest and thinnest
 
 - **Deepest:** Entra ID, Teams and SharePoint sharing: Graph and the Teams/SharePoint admin APIs expose these settings directly.
-- **Thinnest:** Intune (2 checks), the Defender portal (policy depth) and anything in Purview. These live in separate compliance or product PowerShell and are not yet wired in.
+- **Thinnest:** Intune (2 checks) and Purview beyond the basics (audit, DLP, labels, retention). Exchange, Defender for Office 365 and Purview data come from Exchange Online and compliance PowerShell, so they are opt-in domains that need the `ExchangeOnlineManagement` module and a separate sign-in.
 - **Secure Score is a safety net.** Its recommended actions (the SSC findings) already surface many of the uncovered areas above (DLP, anti-spam, mail flow), but as one grouped finding without per-setting detail.
 
 ## 5. Licence and permission notes
@@ -103,6 +107,8 @@ No findings exist for these areas. They are the roadmap, roughly in priority ord
 - Security Defaults is taken into account by `ENT-CA-003` and `ENT-CA-004` (it blocks legacy authentication and requires admin MFA), and lowers the severity of `ENT-CA-006`. Device-code sign-in does not work in tenants with Security Defaults enabled.
 - `ENT-CA-009` (emergency access accounts) only **nominates** candidates from Conditional Access exclusions; a person must confirm they really are break-glass accounts.
 - First sign-in in a tenant needs one-time admin consent for the read-only Graph scopes (see the README).
+- **Sovereign clouds:** `-Environment Global|USGov|USGovDoD|China` sends Graph, Exchange, Purview and Teams to the same cloud. Only `Global` has been run against a live tenant; the others are wired but untested, the tool warns when you select one, and Teams is not supported in `China`. An endpoint a cloud does not offer shows as NotAssessed.
+- **Optional report additions:** `-IncludeEvidence` writes the full affected-item list for each gap to `evidence/`, and `-CisView` regroups findings by CIS recommendation number.
 '@
 
 $out = [System.Text.StringBuilder]::new()

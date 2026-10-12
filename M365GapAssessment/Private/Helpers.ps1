@@ -245,7 +245,7 @@ function Measure-AssessmentScore {
         Return a [double] percentage, or $null if there is nothing meaningful to score.
     #>
     [CmdletBinding()]
-    param([Parameter(Mandatory)][object[]]$Findings)
+    param([Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Findings)
 
     # Per-finding scoring: each check counts once, weighted by severity. AffectedCount is reported on the
     # finding itself but deliberately does not influence the score. NotAssessed counts as a failure so

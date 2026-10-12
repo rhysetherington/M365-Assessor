@@ -5,6 +5,8 @@ function Connect-M365Assessment {
     .DESCRIPTION
         Interactive (default), device code, app-only client secret (-Credential: username = client ID, password = secret)
         or app-only certificate (-ClientId + -CertificateThumbprint). Switching tenants disconnects the previous session first.
+        -Environment selects the Microsoft cloud (Global, USGov = GCC High, USGovDoD, China). Exchange, Security & Compliance and
+        Teams follow the same cloud. Only Global has been run against a live tenant; the others warn that they are untested.
     .EXAMPLE
         Connect-M365Assessment -TenantId contoso.onmicrosoft.com
     .EXAMPLE
@@ -17,7 +19,7 @@ function Connect-M365Assessment {
         [Parameter(ParameterSetName = 'Secret', Mandatory)][pscredential]$Credential,
         [Parameter(ParameterSetName = 'Cert', Mandatory)][string]$CertificateThumbprint,
         [Parameter(ParameterSetName = 'Cert', Mandatory)][string]$ClientId,
-        [string]$Environment = 'Global',
+        [ValidateSet('Global', 'USGov', 'USGovDoD', 'China')][string]$Environment = 'Global',
         [switch]$SkipRoleCheck,
         [switch]$Force
     )
@@ -29,7 +31,8 @@ function Connect-M365Assessment {
     if ($ctx) {
         $sameTenant = (-not $TenantId) -or ($ctx.TenantId -eq $TenantId)
         $missing = if ($ctx.AuthType -eq 'Delegated') { @($script:RequiredScopes | Where-Object { $_ -notin $ctx.Scopes }) } else { @() }
-        if ($Force -or -not $sameTenant -or $missing.Count) {
+        $sameCloud = (-not $ctx.Environment) -or ($ctx.Environment -eq $Environment)
+        if ($Force -or -not $sameTenant -or -not $sameCloud -or $missing.Count) {
             Write-Verbose "Disconnecting existing Graph session (tenant $($ctx.TenantId))."
             Disconnect-MgGraph | Out-Null
             $ctx = $null
@@ -51,6 +54,18 @@ function Connect-M365Assessment {
         catch { throw "Microsoft Graph sign-in failed: $($_.Exception.Message)" }
         $ctx = Get-MgContext
         if (-not $ctx) { throw 'Connect-MgGraph returned without establishing a session (sign-in not completed). Retry, or use -UseDeviceAuthentication.' }
+    }
+
+    # Refuse to assess a tenant through the wrong cloud: the session must be in the cloud that was asked for.
+    if ($ctx.Environment -and $ctx.Environment -ne $Environment) {
+        Disconnect-MgGraph | Out-Null
+        throw "The Graph session is in the '$($ctx.Environment)' cloud but -Environment '$Environment' was requested. Disconnected; nothing was assessed."
+    }
+    # Exchange, Security & Compliance and Teams read this to connect to the same cloud.
+    $script:CloudEnvironmentName = $Environment
+    $cloud = Get-CloudEnvironment -Name $Environment
+    if (-not $cloud.LiveTested) {
+        Write-Warning "Cloud '$Environment' ($($cloud.Display)) is wired up but has not been tested against a live tenant: any endpoint this cloud does not offer is reported as NotAssessed. Review results before relying on them."
     }
 
     $roles = @()

@@ -11,6 +11,12 @@ function Get-TeamsGaps {
 
     $ids = 'TMS-001', 'TMS-002', 'TMS-003', 'TMS-004', 'TMS-005', 'TMS-006', 'TMS-007', 'TMS-008', 'TMS-009', 'TMS-010', 'TMS-011'
 
+    $cloud = Get-CloudEnvironment
+    if (-not $cloud.TeamsSupported) {
+        foreach ($id in $ids) { New-Finding -Id $id -Status NotAssessed -Detail "The Teams checks are not available for the $($cloud.Display) cloud: this tool does not know a supported Teams PowerShell environment for it." }
+        return
+    }
+
     if (-not (Get-Module -ListAvailable -Name MicrosoftTeams)) {
         foreach ($id in $ids) { New-Finding -Id $id -Status NotAssessed -Detail 'MicrosoftTeams module is not installed (Install-Module MicrosoftTeams -Scope CurrentUser).' }
         return
@@ -21,6 +27,7 @@ function Get-TeamsGaps {
         Import-Module MicrosoftTeams -ErrorAction Stop
         $conn = @{ ErrorAction = 'Stop' }
         if ($TenantId) { $conn.TenantId = $TenantId }
+        if ($cloud.TeamsName) { $conn.TeamsEnvironmentName = $cloud.TeamsName }
         # The Windows broker (WAM) is not available on macOS/Linux and fails with a kernel32.dll load error.
         if (-not $IsWindows -and (Get-Command Connect-MicrosoftTeams).Parameters.ContainsKey('DisableWAM')) { $conn.DisableWAM = $true }
         $null = Connect-MicrosoftTeams @conn

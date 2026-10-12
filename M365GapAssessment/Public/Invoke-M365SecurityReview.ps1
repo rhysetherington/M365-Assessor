@@ -17,7 +17,8 @@ function Invoke-M365SecurityReview {
         [string]$ClientId,
         [string]$CertificateThumbprint,
         [switch]$UseDeviceAuthentication,
-        [ValidateSet('Licensing', 'EntraID', 'EntraPolicy', 'Defender', 'SecureScore', 'EmailDns', 'ExchangeOnline', 'Teams', 'SharePoint')]
+        [ValidateSet('Global', 'USGov', 'USGovDoD', 'China')][string]$Environment = 'Global',
+        [ValidateSet('Licensing', 'EntraID', 'EntraPolicy', 'Defender', 'SecureScore', 'EmailDns', 'ExchangeOnline', 'DefenderO365', 'Purview', 'Teams', 'SharePoint')]
         [string[]]$Domain = @('Licensing', 'EntraID', 'EntraPolicy', 'Defender', 'SecureScore', 'EmailDns', 'SharePoint'),
         [string]$DohEndpoint = 'https://cloudflare-dns.com/dns-query',
         [int]$StaleDays = 90,
@@ -34,6 +35,8 @@ function Invoke-M365SecurityReview {
         [ValidatePattern('^#[0-9a-fA-F]{6}$')][string]$BrandColor,
         [string]$LogoPath,
         [switch]$HideTenantId,
+        [switch]$IncludeEvidence,
+        [switch]$CisView,
         [switch]$SkipRoleCheck,
         [switch]$NoExport
     )
@@ -49,7 +52,7 @@ function Invoke-M365SecurityReview {
         Write-Progress -Id 1 -Activity "M365 Gap Assessment [$label]" -Status 'Connecting' -PercentComplete $base
 
         # --- Connect -------------------------------------------------------------------------
-        $connect = @{ SkipRoleCheck = $SkipRoleCheck }
+        $connect = @{ SkipRoleCheck = $SkipRoleCheck; Environment = $Environment }
         if ($tenant) { $connect.TenantId = $tenant }
         if ($Credential) { $connect.Credential = $Credential }
         if ($CertificateThumbprint) { $connect.CertificateThumbprint = $CertificateThumbprint; $connect.ClientId = $ClientId }
@@ -85,23 +88,29 @@ function Invoke-M365SecurityReview {
 
         $steps = @($Domain).Count
         $done = 0
-        foreach ($d in $Domain) {
-            $pct = $base + [int](($done / $steps) * (100 / $tenants.Count) * 0.9)
-            Write-Progress -Id 1 -Activity "M365 Gap Assessment [$($context.TenantId)]" -Status "Collecting: $d" -PercentComplete $pct
-            $result = switch ($d) {
-                'Licensing' { Get-LicenseGaps -Inventory $licensing }
-                'EntraID' { Get-EntraIDGaps -StaleDays $StaleDays -SecretWarningDays $SecretWarningDays }
-                'EntraPolicy' { Get-EntraPolicyGaps -StaleDays $StaleDays }
-                'Defender' { Get-DefenderGaps }
-                'SecureScore' { Get-SecureScoreGaps -TargetScorePercent $TargetScorePercent }
-                'EmailDns' { Get-EmailDnsGaps -DohEndpoint $DohEndpoint }
-                'ExchangeOnline' { Get-ExchangeOnlineGaps -TenantId $tenant }
-                'Teams' { Get-TeamsGaps -TenantId $tenant }
-                'SharePoint' { Get-SharePointGaps }
+        # Exchange / Purview sessions are shared between domains and always closed when this tenant is finished.
+        try {
+            foreach ($d in $Domain) {
+                $pct = $base + [int](($done / $steps) * (100 / $tenants.Count) * 0.9)
+                Write-Progress -Id 1 -Activity "M365 Gap Assessment [$($context.TenantId)]" -Status "Collecting: $d" -PercentComplete $pct
+                $result = switch ($d) {
+                    'Licensing' { Get-LicenseGaps -Inventory $licensing }
+                    'EntraID' { Get-EntraIDGaps -StaleDays $StaleDays -SecretWarningDays $SecretWarningDays }
+                    'EntraPolicy' { Get-EntraPolicyGaps -StaleDays $StaleDays }
+                    'Defender' { Get-DefenderGaps }
+                    'SecureScore' { Get-SecureScoreGaps -TargetScorePercent $TargetScorePercent }
+                    'EmailDns' { Get-EmailDnsGaps -DohEndpoint $DohEndpoint }
+                    'ExchangeOnline' { Get-ExchangeOnlineGaps -TenantId $tenant }
+                    'DefenderO365' { Get-DefenderO365Gaps -TenantId $tenant }
+                    'Purview' { Get-PurviewGaps -TenantId $tenant }
+                    'Teams' { Get-TeamsGaps -TenantId $tenant }
+                    'SharePoint' { Get-SharePointGaps }
+                }
+                foreach ($f in @($result)) { if ($f) { $findings.Add($f) } }
+                $done++
             }
-            foreach ($f in @($result)) { if ($f) { $findings.Add($f) } }
-            $done++
         }
+        finally { Stop-ExchangeSessions }
 
         Set-AcceptedRisk -Findings $findings -Risks @(Import-AcceptedRisk -Path $AcceptedRiskPath)
         $ordered = @($findings | Sort-Object @{ Expression = { $script:SeverityOrder[[string]$_.Severity] } }, FindingId)
@@ -134,14 +143,14 @@ function Invoke-M365SecurityReview {
             ExportedFiles = @()
         }
 
-        $branding = @{ PreparedBy = $PreparedBy; BrandColor = $BrandColor; LogoPath = $LogoPath; HideTenantId = [bool]$HideTenantId }
+        $branding = @{ PreparedBy = $PreparedBy; BrandColor = $BrandColor; LogoPath = $LogoPath; HideTenantId = [bool]$HideTenantId; CisView = [bool]$CisView }
         # --- Export --------------------------------------------------------------------------
         if (-not $NoExport) {
             Write-Progress -Id 1 -Activity "M365 Gap Assessment [$($context.TenantId)]" -Status 'Exporting reports' -PercentComplete ($base + 95 / $tenants.Count)
             $folderName = Get-AssessmentBaseName -Assessment $assessment
             $folder = Join-Path $ExportPath $folderName
             if (Test-Path -LiteralPath $folder) { $folder = Join-Path $ExportPath ('{0}-{1}' -f $folderName, (Get-Date -Format 'HHmm')) }
-            $assessment.ExportedFiles = @(Export-M365GapReport -Assessment $assessment -ExportPath $folder -Format $Format -Branding $branding)
+            $assessment.ExportedFiles = @(Export-M365GapReport -Assessment $assessment -ExportPath $folder -Format $Format -Branding $branding -IncludeEvidence:$IncludeEvidence)
         }
         $assessment
     }

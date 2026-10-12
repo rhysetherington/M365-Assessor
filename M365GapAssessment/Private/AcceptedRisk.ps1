@@ -62,7 +62,7 @@ function Set-AcceptedRisk {
     #>
     [CmdletBinding()]
     param(
-        [Parameter(Mandatory)][object[]]$Findings,
+        [Parameter(Mandatory)][AllowEmptyCollection()][object[]]$Findings,
         [object[]]$Risks = @()
     )
 
